@@ -1,0 +1,18 @@
+[project]
+name = "westend-map"
+version = "0.1.0"
+authors = [
+    { name = "bubblbu", email = "asura.enkhbayar@gmail.com" }
+]
+requires-python = ">=3.12"
+dependencies = [
+    "numpy",
+    "pandas",
+    "folium",
+    "shapely",
+    "loguru",
+]
+
+[build-system]
+requires = ["uv_build>=0.9.3,<0.10.0"]
+build-backend = "uv_build"

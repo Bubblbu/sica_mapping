@@ -1,0 +1,13 @@
+# config.toml
+[paths]
+buildings = "data/buildings.csv"
+addresses = "data/property_addresses.csv"
+blocks = "data/block-outlines.csv"
+vtu = "data/membership_full.csv"
+
+[options]
+out = "index.html"
+bbox = "-123.18,49.265,-123.10,49.295"
+tiles = "cartodbpositron"
+sidebar_width = 540
+verbose = true
