@@ -38,9 +38,9 @@ from .frontend import (
 def _ensure_output_path(path: Path) -> Path:
     original = Path(path)
     if original.is_absolute():
-        target = Path("html") / original.name
+        target = Path("www") / original.name
     else:
-        target = original if original.parts and original.parts[0] == "html" else Path("html") / original
+        target = original if original.parts and original.parts[0] == "www" else Path("www") / original
     target.parent.mkdir(parents=True, exist_ok=True)
     return target
 
