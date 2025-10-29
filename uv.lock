@@ -427,7 +427,7 @@ wheels = [
 ]
 
 [[package]]
-name = "westend-map"
+name = "sica_mapping"
 version = "0.1.0"
 source = { editable = "." }
 dependencies = [

@@ -216,9 +216,8 @@
   <div class="pane-resize-handle" data-target="#filters-panel" data-side="left" data-min-width="240" data-max-width="520"
     aria-hidden="true"></div>
   <div class="filters-card">
-    <h3>VTU Membership</h3>
     <div class="filter-section">
-      <h4>Status</h4>
+      <h3>Overview Stats</h4>
       <table class="status-table">
         <thead>
           <tr>
@@ -248,7 +247,7 @@
       </table>
     </div>
     <div class="filter-section">
-      <h4>Visualization</h4>
+      <h4>Visualization Options</h4>
       <div class="filter-visual">
         <label><input type="checkbox" id="viz-color-vtu" checked> Color-scale VTU buildings (total units)</label>
         <label><input type="checkbox" id="viz-hide-non"> Hide buildings w/o members</label>
@@ -256,7 +255,9 @@
         <label><input type="checkbox" id="viz-color-blocks" checked> Color-scale blocks (total units)</label>
       </div>
     </div>
+    <h3>Filters</h3>
     <div class="filter-section">
+      <h4>Membership</h4>
       <label><input type="checkbox" id="filter-require-member"> Require member tag</label>
       <div class="filter-year">
         <label class="filter-year-toggle"><input type="checkbox" id="filter-year-enabled"> Filter by membership year</label>
@@ -275,7 +276,7 @@
       </div>
     </div>
     <div class="filter-section">
-      <h4>Building Filters</h4>
+      <h4>Buildings</h4>
       <div id="filter-building-section" class="filter-building"></div>
     </div>
     <button type="button" id="filter-reset">Reset filters</button>

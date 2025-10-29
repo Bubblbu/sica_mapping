@@ -1,5 +1,6 @@
 <style>
-  html, body {
+  html,
+  body {
     height: 100%;
     width: 100%;
     margin: 0;
@@ -15,7 +16,7 @@
     overflow: hidden;
   }
 
-  body > .folium-map {
+  body>.folium-map {
     order: 1;
     flex: 1 1 auto;
     min-width: 0;
@@ -23,14 +24,14 @@
     position: relative;
   }
 
-  body > .folium-map > div {
+  body>.folium-map>div {
     height: 100%;
     width: 100%;
   }
 
   #sidebar-container {
     order: 0;
-    width: 760px;
+    width: 900px;
     min-width: 280px;
     max-width: 900px;
     height: 100%;
@@ -197,12 +198,31 @@
   <div class="pane-resize-handle" data-target="#sidebar-container" data-side="right" data-min-width="280"
     data-max-width="760" aria-hidden="true"></div>
   <div id="sidebar-tabs">
-    <button id="tab-buildings" class="active">Buildings</button>
+    <button id="tab-landlords" class="active">Landlords</button>
+    <button id="tab-buildings">Buildings</button>
     <button id="tab-blocks">Blocks</button>
-    <button id="tab-landlords">Landlords</button>
   </div>
   <div id="sidebar-content">
-    <div id="pane-buildings" class="pane active">
+    <div id="pane-landlords" class="pane active">
+      <div class="table-wrap">
+        <table class="data" id="landlords-table">
+          <thead>
+            <tr>
+              <th class="select-head" data-sort="none">Select</th>
+              <th data-sort="text">Landlord</th>
+              <th data-sort="number">Bldgs</th>
+              <th data-sort="number">Units</th>
+              <th data-sort="number">VTU bldgs</th>
+              <th data-sort="number">VTU mem</th>
+              <th data-sort="number">Share (%)</th>
+              <th data-sort="number">Members / 100 units</th>
+            </tr>
+          </thead>
+          <tbody>$landlords_rows</tbody>
+        </table>
+      </div>
+    </div>
+    <div id="pane-buildings" class="pane">
       <div class="table-controls"></div>
       <div class="table-wrap">
         <table class="data" id="buildings-table">
@@ -249,25 +269,6 @@
             </tr>
           </thead>
           <tbody>$blocks_rows</tbody>
-        </table>
-      </div>
-    </div>
-    <div id="pane-landlords" class="pane">
-      <div class="table-wrap">
-        <table class="data" id="landlords-table">
-          <thead>
-            <tr>
-              <th class="select-head" data-sort="none">Select</th>
-              <th data-sort="text">Landlord</th>
-              <th data-sort="number">Bldgs</th>
-              <th data-sort="number">Units</th>
-              <th data-sort="number">VTU bldgs</th>
-              <th data-sort="number">VTU mem</th>
-              <th data-sort="number">Share (%)</th>
-              <th data-sort="number">Members / 100 units</th>
-            </tr>
-          </thead>
-          <tbody>$landlords_rows</tbody>
         </table>
       </div>
     </div>
