@@ -584,8 +584,9 @@
       const summaryUnitsEl = document.getElementById('summary-buildings-units');
       const summaryMembersEl = document.getElementById('summary-buildings-members');
       const summaryRowsEl = document.getElementById('summary-buildings-rows');
-      const legendBlocksEl = document.getElementById('legend-blocks');
-      const legendBuildingsEl = document.getElementById('legend-buildings');
+      const legendContainerEl = document.getElementById('legend-map');
+      const legendBlocksEl = document.getElementById('legend-blocks-section');
+      const legendBuildingsEl = document.getElementById('legend-buildings-section');
 
       const metricControls = {};
       let metricKeys = [];
@@ -742,15 +743,19 @@
         const blocksVisible = vizBlocksChk ? vizBlocksChk.checked !== false : true;
         const showBuildingLegend = colorScaleChk ? colorScaleChk.checked !== false : true;
         const showBlocksLegend = blocksVisible && blockColorScalingEnabled;
-        if (legendBuildingsEl) {
+        if (legendContainerEl) {
           const sidebarEl = document.getElementById('sidebar-container');
           if (sidebarEl && sidebarEl.offsetWidth) {
             const leftPos = sidebarEl.offsetWidth + 30;
-            legendBuildingsEl.style.left = leftPos + 'px';
+            legendContainerEl.style.left = leftPos + 'px';
           }
         }
         setLegendDisplay(legendBlocksEl, showBlocksLegend);
         setLegendDisplay(legendBuildingsEl, showBuildingLegend);
+        if (legendContainerEl) {
+          const shouldShow = (showBlocksLegend && legendBlocksEl) || (showBuildingLegend && legendBuildingsEl);
+          legendContainerEl.style.display = shouldShow ? 'flex' : 'none';
+        }
       }
 
       function updateMarkerColorAppearance(marker) {

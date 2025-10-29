@@ -17,7 +17,6 @@ def _load_template(name: str) -> str:
 SIDEBAR_HTML_TEMPLATE = Template(_load_template("sidebar.html"))
 WIRING_JS_TEMPLATE = Template(_load_template("wiring.js"))
 LEGEND_BLOCKS_TEMPLATE = Template(_load_template("legend_blocks.html"))
-LEGEND_BUILDINGS_TEMPLATE = Template(_load_template("legend_buildings.html"))
 LEGEND_FILTERS_TEMPLATE = Template(_load_template("legend_filters.html"))
 
 def compute_vmax(pts_df) -> float:
@@ -176,7 +175,7 @@ def wiring_js(
     )
 
 
-def legends_html(vmax: float, sidebar_width: int, filter_config: dict[str, object]) -> tuple[str, str, str]:
+def legends_html(vmax: float, sidebar_width: int, filter_config: dict[str, object]) -> tuple[str, str]:
     neighbourhoods = filter_config.get("neighbourhoods") or []
     hood_entries: list[str] = []
     for nei in neighbourhoods:
@@ -211,12 +210,6 @@ def legends_html(vmax: float, sidebar_width: int, filter_config: dict[str, objec
             if frac == 1.0:
                 value = block_max
             block_ticks.append(format(value, ","))
-    block_ticks_html = "".join(f"<span>{escape(tick)}</span>" for tick in block_ticks)
-    legend_blocks = LEGEND_BLOCKS_TEMPLATE.substitute(
-        block_ticks_html=block_ticks_html,
-        block_max_label=format(block_max, ","),
-    )
-
     try:
         sidebar_width_px = int(sidebar_width)
     except (TypeError, ValueError):
@@ -229,7 +222,11 @@ def legends_html(vmax: float, sidebar_width: int, filter_config: dict[str, objec
         vmax_value = 0
     if vmax_value < 0:
         vmax_value = 0
-    legend_buildings = LEGEND_BUILDINGS_TEMPLATE.substitute(
+
+    block_ticks_html = "".join(f"<span>{escape(tick)}</span>" for tick in block_ticks)
+    legend_map = LEGEND_BLOCKS_TEMPLATE.substitute(
+        block_ticks_html=block_ticks_html,
+        block_max_label=format(block_max, ","),
         legend_left_offset=legend_left_offset,
         vmax_label=format(vmax_value, ","),
     )
@@ -238,4 +235,4 @@ def legends_html(vmax: float, sidebar_width: int, filter_config: dict[str, objec
         hood_html=hood_html,
     )
 
-    return legend_blocks, legend_buildings, legend_filters
+    return legend_map, legend_filters
