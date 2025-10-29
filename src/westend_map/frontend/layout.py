@@ -25,13 +25,7 @@ def compute_vmax(pts_df) -> float:
     if len(pos) == 0:
         return 1.0
     max_val = float(np.nanmax(pos))
-    if len(pos) >= 10:
-        percentile = 98 if len(pos) >= 50 else 95
-        capped = float(np.nanpercentile(pos, percentile))
-        vmax = min(max_val, max(capped, max_val * 0.8))
-    else:
-        vmax = max_val
-    return max(vmax, 1.0)
+    return max(max_val, 1.0)
 
 def add_blocks_layer(m: folium.Map, feature_collection: dict) -> folium.GeoJson:
     features = feature_collection.get("features") or []
@@ -56,7 +50,7 @@ def add_blocks_layer(m: folium.Map, feature_collection: dict) -> folium.GeoJson:
             scaled = min(max(total_units / max_total_units, 0.0), 1.0)
         else:
             scaled = 0.0
-        return {"fillColor": greens_color(scaled), "color": "#b8b8b8", "weight": 1, "fillOpacity": 0.35}
+        return {"fillColor": greens_color(scaled), "color": "#b8b8b8", "weight": 1, "fillOpacity": 0.55}
     popup = None
     if feature_collection.get("features"):
         popup = folium.GeoJsonPopup(
@@ -140,8 +134,8 @@ def add_buildings_layers(m: folium.Map, pts_df, vmax: float):
             "units": units_val,
         })
 
-    layer_vtu.add_to(m)
     layer_non.add_to(m)
+    layer_vtu.add_to(m)
     layer_vtu_name = layer_vtu.get_name()
     layer_non_name = layer_non.get_name()
     

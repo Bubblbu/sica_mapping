@@ -68,7 +68,7 @@
         const units = Number.isFinite(rawUnits) ? rawUnits : 0;
         let base;
         if (!blockColorScalingEnabled || blockColorMax <= 0) {
-          base = { weight:1, color:'#b8b8b8', fillOpacity:0.20, fillColor:'#f0f0f0' };
+          base = { weight:1, color:'#b8b8b8', fillOpacity:0.35, fillColor:'#f0f0f0' };
         } else {
           const ratio = Math.max(0, Math.min(1, units / blockColorMax));
           const fill = (ratio <= 0.10) ? '#f7fcf5' :
@@ -76,7 +76,7 @@
                        (ratio <= 0.50) ? '#c7e9c0' :
                        (ratio <= 0.75) ? '#74c476' :
                        (ratio <  1.00) ? '#31a354' : '#006d2c';
-          base = { weight:1, color:'#b8b8b8', fillOpacity:0.35, fillColor:fill };
+          base = { weight:1, color:'#b8b8b8', fillOpacity:0.55, fillColor:fill };
         }
         layer._baseStyle = base;
         layer.setStyle(base);
