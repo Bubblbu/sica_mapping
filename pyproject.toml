@@ -1,5 +1,5 @@
 [project]
-name = "westend-map"
+name = "sica-mapping"
 version = "0.1.0"
 authors = [
     { name = "bubblbu", email = "asura.enkhbayar@gmail.com" }

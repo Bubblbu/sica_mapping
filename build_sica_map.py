@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
-from westend_map.cli import parse_args
-from westend_map.build import build_map
+from sica_mapping.cli import parse_args
+from sica_mapping.build import build_map
 
 def main():
     args = parse_args()

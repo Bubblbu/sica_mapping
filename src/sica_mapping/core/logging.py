@@ -72,7 +72,7 @@ try:
 except ModuleNotFoundError:  # pragma: no cover
     _loguru_logger = None  # type: ignore[assignment]
 
-logger = logging.getLogger("westend_map")
+logger = logging.getLogger("sica_mapping")
 
 _configured = False
 
