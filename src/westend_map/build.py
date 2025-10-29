@@ -154,7 +154,10 @@ def build_map(args) -> None:
     m.get_root().html.add_child(folium.Element(
         sidebar_html(rows_buildings(b_tbl), rows_blocks(k_tbl), rows_landlords(l_tbl), args.sidebar_width)
     ))
-    filter_config_json = json.dumps(filter_cfg)
+    output_path = _ensure_output_path(Path(args.out))
+    output_dir = output_path.parent
+    asset_base = output_path.stem or "index"
+
     building_records_map: dict[str, dict[str, Any]] = {}
     for rec in b_tbl.to_dict(orient="records"):
         cleaned = _sanitise_record(rec)
@@ -172,16 +175,31 @@ def build_map(args) -> None:
         "records": building_records_map,
     }
 
-    marker_metadata_json = json.dumps(marker_metadata)
-    building_records_json = json.dumps(building_records_payload)
+    filter_config_name = f"{asset_base}_filter_config.json"
+    marker_metadata_name = f"{asset_base}_marker_metadata.json"
+    building_records_name = f"{asset_base}_building_records.json"
+
+    (output_dir / filter_config_name).write_text(
+        json.dumps(filter_cfg, separators=(",", ":")),
+        encoding="utf-8",
+    )
+    (output_dir / marker_metadata_name).write_text(
+        json.dumps(marker_metadata, separators=(",", ":")),
+        encoding="utf-8",
+    )
+    (output_dir / building_records_name).write_text(
+        json.dumps(building_records_payload, separators=(",", ":")),
+        encoding="utf-8",
+    )
+
     m.get_root().html.add_child(folium.Element(
         wiring_js(
             blocks_geo.get_name(),
             layer_vtu_name,
             layer_non_name,
-            filter_config_json,
-            marker_metadata_json,
-            building_records_json,
+            filter_config_name,
+            marker_metadata_name,
+            building_records_name,
         )
     ))
 
@@ -189,6 +207,5 @@ def build_map(args) -> None:
     for legend in legends:
         m.get_root().html.add_child(folium.Element(legend))
 
-    output_path = _ensure_output_path(Path(args.out))
     m.save(str(output_path))
     logger.info("Wrote %s", output_path)
