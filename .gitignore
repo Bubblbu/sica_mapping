@@ -28,5 +28,6 @@ coverage.xml
 .vscode/
 
 # Project-generated assets
+www/
 .preprocessed/
 .uv-cache/
