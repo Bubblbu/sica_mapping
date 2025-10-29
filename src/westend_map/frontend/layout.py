@@ -36,25 +36,25 @@ def compute_vmax(pts_df) -> float:
 
 def add_blocks_layer(m: folium.Map, feature_collection: dict) -> folium.GeoJson:
     features = feature_collection.get("features") or []
-    max_member_buildings = 0
+    max_total_units = 0
     for feat in features:
         props = feat.get("properties") or {}
         try:
-            member_count = int(props.get("member_buildings") or 0)
+            units_count = int(props.get("total_units") or 0)
         except (TypeError, ValueError):
-            member_count = 0
-        if member_count > max_member_buildings:
-            max_member_buildings = member_count
+            units_count = 0
+        if units_count > max_total_units:
+            max_total_units = units_count
 
     def block_style(feat):
         props = feat.get("properties") or {}
-        member_buildings = props.get("member_buildings") or 0
+        total_units = props.get("total_units") or 0
         try:
-            member_buildings = float(member_buildings)
+            total_units = float(total_units)
         except (TypeError, ValueError):
-            member_buildings = 0.0
-        if max_member_buildings > 0:
-            scaled = min(max(member_buildings / max_member_buildings, 0.0), 1.0)
+            total_units = 0.0
+        if max_total_units > 0:
+            scaled = min(max(total_units / max_total_units, 0.0), 1.0)
         else:
             scaled = 0.0
         return {"fillColor": greens_color(scaled), "color": "#b8b8b8", "weight": 1, "fillOpacity": 0.35}
@@ -66,7 +66,7 @@ def add_blocks_layer(m: folium.Map, feature_collection: dict) -> folium.GeoJson:
             localize=True
         )
     g = folium.GeoJson(
-        data=feature_collection, name="Blocks: VTU buildings (count gradient)",
+        data=feature_collection, name="Blocks: Total units (green gradient)",
         style_function=block_style,
         popup=popup
     )
@@ -193,7 +193,9 @@ def legends_html(vmax: float, sidebar_width: int, filter_config: dict[str, objec
     else:
         hood_html = '<em class="filter-none">No neighbourhood data</em>'
 
-    block_max_raw = filter_config.get("blocks_member_building_max")
+    block_max_raw = filter_config.get("blocks_total_units_max")
+    if block_max_raw is None:
+        block_max_raw = filter_config.get("blocks_member_building_max")
     try:
         block_max = int(block_max_raw)
     except (TypeError, ValueError):
