@@ -1,11 +1,54 @@
 
-<div id="legend-blocks" style="display:none; position: fixed; bottom: 20px; right: 20px; width: 260px; z-index:9998; font-size:14px;">
-  <div style="background:white; padding: 10px; border:1px solid #ccc; border-radius:8px;">
-    <b>Blocks — total units</b><br>
-    <div style="height:12px; background: linear-gradient(to right, #f7fcf5, #e5f5e0, #c7e9c0, #74c476, #31a354, #006d2c); border:1px solid #999; margin-top:6px;"></div>
-    <div style="display:flex; justify-content:space-between; font-size:12px;">
+<style>
+  #legend-map {
+    position: fixed;
+    bottom: 20px;
+    z-index: 9998;
+    font-size: 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+  #legend-map .legend-card {
+    background: white;
+    padding: 10px 12px;
+    border: 1px solid #ccc;
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+  }
+  #legend-map .legend-heading {
+    font-weight: 600;
+    margin: 0;
+  }
+  #legend-map .legend-gradient {
+    height: 12px;
+    border: 1px solid #999;
+    margin-top: 6px;
+  }
+  #legend-map .legend-scale {
+    display: flex;
+    justify-content: space-between;
+    font-size: 12px;
+    margin-top: 6px;
+  }
+  #legend-map .legend-note {
+    font-size: 12px;
+    margin-top: 6px;
+    color: #414a5a;
+  }
+</style>
+<div id="legend-map" style="left:${legend_left_offset}px; display:none;">
+  <div class="legend-card" id="legend-blocks-section">
+    <div class="legend-heading">Blocks — total units</div>
+    <div class="legend-gradient" style="background: linear-gradient(to right, #f7fcf5, #e5f5e0, #c7e9c0, #74c476, #31a354, #006d2c);"></div>
+    <div class="legend-scale">
       $block_ticks_html
     </div>
-    <div style="font-size:12px; margin-top:6px;">Color scaled to 0–$block_max_label units (absolute totals).</div>
+    <div class="legend-note">Color scaled to 0–$block_max_label units (absolute totals).</div>
+  </div>
+  <div class="legend-card" id="legend-buildings-section">
+    <div class="legend-heading">VTU bldgs — total member count</div>
+    <div class="legend-gradient" style="background: linear-gradient(to right, #0d0887, #5c01a6, #9c179e, #cc4778, #ed7953, #fb9f3a, #fdca26, #f0f921);"></div>
+    <div class="legend-note">Color scaled to 0–$vmax_label VTU members (approx. upper-percentile cap). When color scaling is off, VTU buildings are shown in gray.</div>
   </div>
 </div>
