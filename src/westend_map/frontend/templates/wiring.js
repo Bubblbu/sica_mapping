@@ -64,13 +64,13 @@
 
       function resetBlockStyle(layer) {
         if (!layer) return;
-        const rawCount = Number(layer._memberBuildings);
-        const count = Number.isFinite(rawCount) ? rawCount : 0;
+        const rawUnits = Number(layer._blockUnits);
+        const units = Number.isFinite(rawUnits) ? rawUnits : 0;
         let base;
         if (!blockColorScalingEnabled || blockColorMax <= 0) {
           base = { weight:1, color:'#b8b8b8', fillOpacity:0.20, fillColor:'#f0f0f0' };
         } else {
-          const ratio = Math.max(0, Math.min(1, count / blockColorMax));
+          const ratio = Math.max(0, Math.min(1, units / blockColorMax));
           const fill = (ratio <= 0.10) ? '#f7fcf5' :
                        (ratio <= 0.25) ? '#e5f5e0' :
                        (ratio <= 0.50) ? '#c7e9c0' :
@@ -462,15 +462,15 @@
           window.blocksIndex[id] = layer;
           layer._selectionRefs = 0;
           layer._isFiltered = false;
-          var memberCount = Number(props.member_buildings);
-          if (!Number.isFinite(memberCount)) memberCount = 0;
-          layer._memberBuildings = memberCount;
+          var unitTotal = Number(props.total_units);
+          if (!Number.isFinite(unitTotal)) unitTotal = 0;
+          layer._blockUnits = unitTotal;
           blockLayers.push(layer);
         }
       });
       blockColorMax = blockLayers.reduce(function(max, layer) {
-        var count = Number(layer._memberBuildings);
-        return Number.isFinite(count) ? Math.max(max, count) : max;
+        var units = Number(layer._blockUnits);
+        return Number.isFinite(units) ? Math.max(max, units) : max;
       }, 0);
       if (!Number.isFinite(blockColorMax) || blockColorMax < 0) blockColorMax = 0;
       window.blockColorMax = blockColorMax;
@@ -499,6 +499,13 @@
           updateMapStatus();
           applyZoomScaling();
         });
+      }
+      if (mapInstance && typeof mapInstance.invalidateSize === 'function') {
+        setTimeout(function() {
+          mapInstance.invalidateSize({ animate: false });
+          applyZoomScaling();
+          updateMapStatus();
+        }, 50);
       }
 
       const tabB = document.getElementById('tab-buildings');
@@ -852,6 +859,9 @@
               if (Number.isFinite(maxWidth)) newWidth = Math.min(maxWidth, newWidth);
               target.style.width = newWidth + 'px';
               updateLegendVisibility();
+              if (mapInstance && typeof mapInstance.invalidateSize === 'function') {
+                mapInstance.invalidateSize({ animate: false });
+              }
             };
 
             const onMove = function(moveEvent) {
@@ -871,6 +881,9 @@
                 window.removeEventListener('mouseup', onUp);
               }
               updateLegendVisibility();
+              if (mapInstance && typeof mapInstance.invalidateSize === 'function') {
+                mapInstance.invalidateSize({ animate: false });
+              }
             };
 
             const onUp = function(endEvent) {

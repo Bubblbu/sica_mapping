@@ -448,8 +448,8 @@ def run_data_pipeline(
             "units": total_units,
             "vtu_buildings": total_vtu_buildings,
         }
-        filter_cfg["blocks_member_building_max"] = int(
-            blocks_merged["member_buildings"].max()
+        filter_cfg["blocks_total_units_max"] = int(
+            blocks_merged["total_units"].max()
         ) if not blocks_merged.empty else 0
         progress.step("Prepared filter metadata")
         progress.finish("Data stage complete")

@@ -1,50 +1,220 @@
 <style>
-#filters-panel { position: fixed; top: 20px; right: 20px; bottom: 20px; width: 320px; z-index:10000; font-size:13px; overflow-y:auto; }
-#filters-panel .filters-card { background:white; border:1px solid #ccc; border-radius:8px; padding:14px; box-shadow:0 2px 8px rgba(0,0,0,0.12); }
-#filters-panel h3 { margin:0 0 10px; font-size:16px; }
-#filters-panel .filter-section { margin-bottom:16px; }
-#filters-panel .filter-section h4 { margin:8px 0 6px; font-size:14px; }
-#filters-panel label { display:block; margin-bottom:6px; cursor:pointer; }
-#filters-panel .pane-resize-handle { position:absolute; top:0; left:-4px; width:8px; bottom:0; cursor:ew-resize; z-index:10000; user-select:none; }
-#filters-panel .pane-resize-handle::after { content:""; position:absolute; top:0; bottom:0; right:3px; width:2px; background:#d0d0d0; }
-#filters-panel select, #filters-panel input[type="date"], #filters-panel input[type="number"] { width:100%; padding:4px; margin-bottom:8px; box-sizing:border-box; }
-#filters-panel .filter-grid { display:grid; grid-template-columns:1fr 1fr; gap:6px; }
-#filters-panel .filter-grid label { display:flex; flex-direction:column; font-size:12px; margin-bottom:0; }
-#filters-panel .filter-grid label span { margin-bottom:2px; }
-#filters-panel .status-table { width:100%; border-collapse:collapse; font-size:12px; margin-bottom:12px; }
-#filters-panel .status-table th, #filters-panel .status-table td { border:1px solid #dde1eb; padding:6px; text-align:right; }
-#filters-panel .status-table thead th { background:#f3f5fb; font-weight:600; text-align:right; }
-#filters-panel .status-table tbody th { text-align:left; background:#f8f9fd; font-weight:600; }
-#filters-panel .status-table td[data-value="none"] { color:#777; }
-#filters-panel .filter-tags { border:1px solid #ddd; border-radius:6px; padding:6px; max-height:140px; overflow:auto; margin-bottom:10px; }
-#filters-panel .filter-tag { display:block; margin-bottom:4px; font-size:12px; }
-#filters-panel .filter-tag-count { color:#777; margin-left:4px; }
-#filters-panel .filter-none { color:#777; }
-#filters-panel .filter-year { display:flex; flex-direction:column; gap:6px; margin-top:8px; }
-#filters-panel .filter-year-toggle { font-size:12px; display:flex; align-items:center; gap:6px; }
-#filters-panel .filter-year-value { font-size:12px; color:#444; }
-#filter-updated-year { width:100%; }
-#filters-panel button { width:100%; padding:6px; border:1px solid #bbb; background:#f7f7f7; border-radius:6px; cursor:pointer; }
-#filters-panel button:hover { background:#ececec; }
-#filters-panel .filter-actions { display:flex; gap:6px; margin-bottom:10px; }
-#filters-panel .filter-actions button { flex:1; padding:4px 6px; border:1px solid #cdd1dd; background:#f3f5fb; border-radius:4px; cursor:pointer; font-size:12px; }
-#filters-panel .filter-actions button:hover { background:#e6e9f4; }
-#filters-panel .metric-control { background:#f8f9fd; border:1px solid #dde1eb; border-radius:6px; padding:8px 10px; margin-bottom:10px; }
-#filters-panel .metric-header { font-weight:600; font-size:13px; margin-bottom:4px; display:flex; justify-content:space-between; align-items:center; }
-#filters-panel .metric-histogram { display:flex; align-items:flex-end; gap:2px; height:46px; margin:6px 0; }
-#filters-panel .metric-hist-bar { flex:1; background:#d9deeb; border-radius:2px 2px 0 0; }
-#filters-panel .metric-hist-bar.active { background:#ff7043; }
-#filters-panel .metric-sliders { display:flex; flex-direction:column; gap:6px; align-items:stretch; }
-#filters-panel .metric-sliders input[type="range"] { width:100%; height:4px; border-radius:4px; background:#d0d4dd; cursor:pointer; }
-#filters-panel .metric-values { display:flex; justify-content:space-between; font-size:12px; color:#444; margin-top:4px; }
-#filters-panel .filter-building { display:flex; flex-direction:column; gap:8px; }
-#filters-panel .filter-visual { display:flex; flex-direction:column; gap:6px; }
-#filters-panel .filter-status { display:flex; justify-content:space-between; gap:8px; font-size:12px; color:#333; background:#f8f9fd; border:1px solid #dde1eb; border-radius:6px; padding:6px 8px; }
-#filters-panel .filter-status span { flex:1; }
-#filters-panel .filter-status-metrics { display:flex; flex-direction:column; gap:4px; }
+  #filters-panel {
+    order: 2;
+    width: 320px;
+    min-width: 240px;
+    max-width: 520px;
+    height: 100%;
+    background: #fff;
+    border-left: 1px solid #d7dbe5;
+    box-shadow: -2px 0 6px rgba(15, 23, 42, 0.06);
+    display: flex;
+    flex-direction: column;
+    position: relative;
+    overflow: hidden;
+    z-index: 2;
+  }
+
+  #filters-panel .pane-resize-handle {
+    position: absolute;
+    top: 0;
+    left: -4px;
+    width: 8px;
+    bottom: 0;
+    cursor: ew-resize;
+    user-select: none;
+  }
+
+  #filters-panel .pane-resize-handle::after {
+    content: "";
+    position: absolute;
+    top: 20px;
+    bottom: 20px;
+    right: 3px;
+    width: 2px;
+    background: #d0d4dd;
+    border-radius: 2px;
+  }
+
+  #filters-panel .filters-card {
+    flex: 1;
+    overflow-y: auto;
+    padding: 16px;
+    background: #fff;
+  }
+
+  #filters-panel h3 {
+    margin: 0 0 12px;
+    font-size: 16px;
+    color: #1d2533;
+  }
+
+  #filters-panel .filter-section {
+    margin-bottom: 18px;
+  }
+
+  #filters-panel .filter-section h4 {
+    margin: 10px 0 8px;
+    font-size: 14px;
+    color: #27354a;
+  }
+
+  #filters-panel label {
+    display: block;
+    margin-bottom: 6px;
+    cursor: pointer;
+    font-size: 13px;
+    color: #1d2129;
+  }
+
+  #filters-panel select,
+  #filters-panel input[type="date"],
+  #filters-panel input[type="number"],
+  #filters-panel input[type="range"] {
+    width: 100%;
+    box-sizing: border-box;
+  }
+
+  #filters-panel .filter-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 6px;
+  }
+
+  #filters-panel .filter-grid label {
+    display: flex;
+    flex-direction: column;
+    font-size: 12px;
+    margin-bottom: 0;
+    color: #27354a;
+  }
+
+  #filters-panel .filter-grid label span {
+    margin-bottom: 2px;
+  }
+
+  #filters-panel .status-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 12px;
+    margin-bottom: 12px;
+  }
+
+  #filters-panel .status-table th,
+  #filters-panel .status-table td {
+    border: 1px solid #dde1eb;
+    padding: 6px;
+    text-align: right;
+  }
+
+  #filters-panel .status-table thead th {
+    background: #f3f5fb;
+    font-weight: 600;
+    text-align: right;
+  }
+
+  #filters-panel .status-table tbody th {
+    text-align: left;
+    background: #f8f9fd;
+    font-weight: 600;
+  }
+
+  #filters-panel .status-table td[data-value="none"] {
+    color: #777;
+  }
+
+  #filters-panel .filter-tags {
+    border: 1px solid #ddd;
+    border-radius: 6px;
+    padding: 6px;
+    max-height: 160px;
+    overflow: auto;
+    margin-bottom: 10px;
+  }
+
+  #filters-panel .filter-tag {
+    display: block;
+    margin-bottom: 4px;
+    font-size: 12px;
+  }
+
+  #filters-panel .filter-tag-count {
+    color: #6b7280;
+    margin-left: 4px;
+  }
+
+  #filters-panel .filter-none {
+    color: #777;
+  }
+
+  #filters-panel .filter-year {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    margin-top: 8px;
+  }
+
+  #filters-panel .filter-year-toggle {
+    font-size: 12px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  #filters-panel .filter-year-value {
+    font-size: 12px;
+    color: #444;
+  }
+
+  #filters-panel .filter-visual {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  #filters-panel .filter-actions {
+    display: flex;
+    gap: 6px;
+    margin-bottom: 10px;
+  }
+
+  #filters-panel .filter-actions button {
+    flex: 1;
+    padding: 4px 6px;
+    border: 1px solid #cdd1dd;
+    background: #f3f5fb;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 12px;
+  }
+
+  #filters-panel .filter-actions button:hover {
+    background: #e6e9f4;
+  }
+
+  #filters-panel .filter-building {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  #filters-panel button#filter-reset {
+    width: 100%;
+    padding: 6px;
+    border: 1px solid #bbb;
+    background: #f7f7f7;
+    border-radius: 6px;
+    cursor: pointer;
+    margin-top: 4px;
+  }
+
+  #filters-panel button#filter-reset:hover {
+    background: #ececec;
+  }
 </style>
 <div id="filters-panel">
-  <div class="pane-resize-handle" data-target="#filters-panel" data-side="left" data-min-width="240" data-max-width="520" aria-hidden="true"></div>
+  <div class="pane-resize-handle" data-target="#filters-panel" data-side="left" data-min-width="240" data-max-width="520"
+    aria-hidden="true"></div>
   <div class="filters-card">
     <h3>VTU Membership</h3>
     <div class="filter-section">
