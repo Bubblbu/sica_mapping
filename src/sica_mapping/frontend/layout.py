@@ -19,6 +19,7 @@ WIRING_JS_TEMPLATE = Template(_load_template("wiring.js"))
 LEGEND_BLOCKS_TEMPLATE = Template(_load_template("legend_blocks.html"))
 LEGEND_FILTERS_TEMPLATE = Template(_load_template("legend_filters.html"))
 
+
 def compute_vmax(pts_df) -> float:
     counts = pts_df["member_count"].replace([np.inf, -np.inf], np.nan)
     pos = counts[(counts > 0) & (~counts.isna())]
@@ -26,6 +27,7 @@ def compute_vmax(pts_df) -> float:
         return 1.0
     max_val = float(np.nanmax(pos))
     return max(max_val, 1.0)
+
 
 def add_blocks_layer(m: folium.Map, feature_collection: dict) -> folium.GeoJson:
     features = feature_collection.get("features") or []
@@ -50,21 +52,43 @@ def add_blocks_layer(m: folium.Map, feature_collection: dict) -> folium.GeoJson:
             scaled = min(max(total_units / max_total_units, 0.0), 1.0)
         else:
             scaled = 0.0
-        return {"fillColor": greens_color(scaled), "color": "#b8b8b8", "weight": 1, "fillOpacity": 0.55}
+        return {
+            "fillColor": greens_color(scaled),
+            "color": "#b8b8b8",
+            "weight": 1,
+            "fillOpacity": 0.55,
+        }
+
     popup = None
     if feature_collection.get("features"):
         popup = folium.GeoJsonPopup(
-            fields=["block_id","buildings","total_units","median_year_built","member_buildings","total_members"],
-            aliases=["Block","Buildings","# Units","Median year","Buildings w/ VTU","Total VTU members"],
-            localize=True
+            fields=[
+                "block_id",
+                "buildings",
+                "total_units",
+                "median_year_built",
+                "member_buildings",
+                "total_members",
+            ],
+            aliases=[
+                "Block",
+                "Buildings",
+                "# Units",
+                "Median year",
+                "Buildings w/ VTU",
+                "Total VTU members",
+            ],
+            localize=True,
         )
     g = folium.GeoJson(
-        data=feature_collection, name="Blocks: Total units (green gradient)",
+        data=feature_collection,
+        name="Blocks: Total units (green gradient)",
         style_function=block_style,
-        popup=popup
+        popup=popup,
     )
     g.add_to(m)
     return g
+
 
 def marker_radius(units) -> float:
     if pd.isna(units) or units <= 0:
@@ -74,13 +98,19 @@ def marker_radius(units) -> float:
     ratio = float(np.log1p(capped) / np.log1p(600.0))
     return 2.5 + 7.0 * ratio
 
+
 def vtu_opacity(scaled: float) -> float:
-    return 0.30 + 0.40*scaled
+    return 0.30 + 0.40 * scaled
+
 
 def add_buildings_layers(m: folium.Map, pts_df, vmax: float):
     # 1. Update layer name to reflect coloring by count
-    layer_vtu = folium.FeatureGroup(name="VTU member buildings (Plasma by count)", show=True, overlay=True)
-    layer_non = folium.FeatureGroup(name="Other buildings (gray)", show=True, overlay=True)
+    layer_vtu = folium.FeatureGroup(
+        name="VTU member buildings (Plasma by count)", show=True, overlay=True
+    )
+    layer_non = folium.FeatureGroup(
+        name="Other buildings (gray)", show=True, overlay=True
+    )
     marker_metadata: list[dict[str, object]] = []
 
     for _, r in pts_df.iterrows():
@@ -98,15 +128,15 @@ def add_buildings_layers(m: folium.Map, pts_df, vmax: float):
             f"<b>{escape(str(r['address']))}</b><br>"
             f"Units: {'' if pd.isna(r['units']) else int(r['units'])}<br>"
             f"VTU members: {int(r['member_count'])}<br>"
-            f"Member share: {member_share*100:.0f}%<br>"
+            f"Member share: {member_share * 100:.0f}%<br>"
             f"Owner: {escape(str(r['owner_group']))}<br>"
             f"Year built: {'' if pd.isna(r['year_built']) else int(r['year_built'])}"
         )
-        
+
         block_id_val = r.get("block_id")
         block_id = int(block_id_val) if pd.notna(block_id_val) else None
         members_payload = r.get("members_payload", [])
-        
+
         mk = folium.CircleMarker(
             location=[r["lat"], r["lon"]],
             radius=radius_val,
@@ -116,40 +146,44 @@ def add_buildings_layers(m: folium.Map, pts_df, vmax: float):
             weight=0,
             fill_color=color,
         ).add_child(folium.Popup(popup_html, max_width=320))
-        
+
         (layer_vtu if has_vtu_member else layer_non).add_child(mk)
 
-        marker_metadata.append({
-            "marker_var": mk.get_name(),
-            "b_id": int(r["b_id"]),
-            "owner_key": r["owner_key"],
-            "block_id": block_id,
-            "members_payload": members_payload,
-            "base_radius": radius_val,
-            "base_opacity": opacity,
-            "base_color": color,
-            "neutral_color": neutral_color if has_vtu_member else color,
-            "is_vtu": has_vtu_member,
-            "member_count": int(count) if pd.notna(count) else 0,
-            "units": units_val,
-        })
+        marker_metadata.append(
+            {
+                "marker_var": mk.get_name(),
+                "b_id": int(r["b_id"]),
+                "owner_key": r["owner_key"],
+                "block_id": block_id,
+                "members_payload": members_payload,
+                "base_radius": radius_val,
+                "base_opacity": opacity,
+                "base_color": color,
+                "neutral_color": neutral_color if has_vtu_member else color,
+                "is_vtu": has_vtu_member,
+                "member_count": int(count) if pd.notna(count) else 0,
+                "units": units_val,
+            }
+        )
 
     layer_non.add_to(m)
     layer_vtu.add_to(m)
     layer_vtu_name = layer_vtu.get_name()
     layer_non_name = layer_non.get_name()
-    
+
     return layer_vtu, layer_non, layer_vtu_name, layer_non_name, marker_metadata
 
 
-
-def sidebar_html(buildings_rows: str, blocks_rows: str, landlords_rows: str, sidebar_width: int) -> str:
+def sidebar_html(
+    buildings_rows: str, blocks_rows: str, landlords_rows: str, sidebar_width: int
+) -> str:
     return SIDEBAR_HTML_TEMPLATE.safe_substitute(
         sidebar_width=sidebar_width,
         buildings_rows=buildings_rows,
         blocks_rows=blocks_rows,
         landlords_rows=landlords_rows,
     )
+
 
 def wiring_js(
     blocks_layer_var: str,
@@ -169,7 +203,9 @@ def wiring_js(
     )
 
 
-def legends_html(vmax: float, sidebar_width: int, filter_config: dict[str, object]) -> tuple[str, str]:
+def legends_html(
+    vmax: float, sidebar_width: int, filter_config: dict[str, object]
+) -> tuple[str, str]:
     neighbourhoods = filter_config.get("neighbourhoods") or []
     hood_entries: list[str] = []
     for nei in neighbourhoods:

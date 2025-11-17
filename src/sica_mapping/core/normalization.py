@@ -34,7 +34,9 @@ def normalize_street(s: str) -> str:
 def addr_key_from_freeform(addr: str) -> str:
     addr = str(addr).strip().lower()
     m = re.match(r"^(\d+)\s+(.+)$", addr)
-    return f"{m.group(1)} {normalize_street(m.group(2))}" if m else normalize_street(addr)
+    return (
+        f"{m.group(1)} {normalize_street(m.group(2))}" if m else normalize_street(addr)
+    )
 
 
 def parse_lat_lon(s: Any) -> Tuple[float, float]:
@@ -62,7 +64,9 @@ def clean_owner_label(name: Any) -> str:
         except (ValueError, SyntaxError):
             parsed = None
     if isinstance(parsed, (list, tuple, set)):
-        cleaned = [str(item).strip().strip("'\"") for item in parsed if str(item).strip()]
+        cleaned = [
+            str(item).strip().strip("'\"") for item in parsed if str(item).strip()
+        ]
         if cleaned:
             return ", ".join(cleaned)
         return "(Unknown)"
@@ -80,6 +84,6 @@ def sanitize_owner(name: Any) -> str:
     if pd.isna(name) or str(name).strip() == "":
         return "unknown"
     s = str(name).lower()
-    s = unicodedata.normalize('NFKD', s)
+    s = unicodedata.normalize("NFKD", s)
     s = re.sub(r"[^a-z0-9]+", "-", s).strip("-")
     return s or "unknown"

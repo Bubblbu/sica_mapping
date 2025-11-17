@@ -22,10 +22,15 @@ def parse_geom(raw: Any) -> Optional[shapely_base.BaseGeometry]:
 
 def poly_to_geojson(geom: shapely_base.BaseGeometry) -> Optional[Dict[str, Any]]:
     if isinstance(geom, Polygon):
-        return {"type": "Polygon", "coordinates": [list(map(list, geom.exterior.coords))]}
+        return {
+            "type": "Polygon",
+            "coordinates": [list(map(list, geom.exterior.coords))],
+        }
     if isinstance(geom, MultiPolygon):
         return {
             "type": "MultiPolygon",
-            "coordinates": [[list(map(list, poly.exterior.coords))] for poly in geom.geoms],
+            "coordinates": [
+                [list(map(list, poly.exterior.coords))] for poly in geom.geoms
+            ],
         }
     return None

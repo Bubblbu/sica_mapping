@@ -16,6 +16,7 @@ DEFAULT_STAGE = "frontend"
 DEFAULT_DATA_DIR = ".preprocessed"
 _REQUIRED_PATHS = ("buildings", "addresses", "blocks", "vtu")
 
+
 def _load_config(path: str) -> dict[str, object]:
     config_path = Path(path)
     if not config_path.exists():
@@ -23,11 +24,14 @@ def _load_config(path: str) -> dict[str, object]:
     suffix = config_path.suffix.lower()
     if suffix in {".toml", ".tml"}:
         if tomllib is None:
-            raise RuntimeError("tomllib not available; upgrade to Python 3.11+ or use JSON config.")
+            raise RuntimeError(
+                "tomllib not available; upgrade to Python 3.11+ or use JSON config."
+            )
         return tomllib.loads(config_path.read_text())
     if suffix == ".json":
         return json.loads(config_path.read_text())
     raise ValueError(f"Unsupported config format: {config_path.suffix}")
+
 
 def _merge_config(args: argparse.Namespace, config: dict[str, object]) -> None:
     # Allow optional grouping inside the config (e.g. {"paths": {...}}).
@@ -65,7 +69,9 @@ def _merge_config(args: argparse.Namespace, config: dict[str, object]) -> None:
         try:
             args.sidebar_width = int(args.sidebar_width)
         except (TypeError, ValueError) as exc:
-            raise ValueError(f"sidebar_width must be an integer (got {args.sidebar_width!r})") from exc
+            raise ValueError(
+                f"sidebar_width must be an integer (got {args.sidebar_width!r})"
+            ) from exc
 
     # Normalize stage and data_dir
     stage = getattr(args, "stage", DEFAULT_STAGE)
@@ -79,20 +85,43 @@ def _merge_config(args: argparse.Namespace, config: dict[str, object]) -> None:
     else:
         args.data_dir = str(data_dir)
 
+
 def parse_args() -> argparse.Namespace:
     ap = argparse.ArgumentParser(description="Build West End VTU map")
-    ap.add_argument("--config", help="Optional TOML/JSON config file with argument defaults")
+    ap.add_argument(
+        "--config", help="Optional TOML/JSON config file with argument defaults"
+    )
     ap.add_argument("--buildings", help="Buildings CSV")
-    ap.add_argument("--addresses", help="Property addresses CSV (civic_number, std_street, geo_point_2d)")
+    ap.add_argument(
+        "--addresses",
+        help="Property addresses CSV (civic_number, std_street, geo_point_2d)",
+    )
     ap.add_argument("--blocks", help="Block outlines CSV (with 'geom' GeoJSON column)")
     ap.add_argument("--vtu", help="VTU members CSV (with address column)")
     ap.add_argument("--out", help=f"Output HTML (default: {DEFAULT_OUT})")
-    ap.add_argument("--bbox", help=f"lon_min,lat_min,lon_max,lat_max (default: {DEFAULT_BBOX})")
+    ap.add_argument(
+        "--bbox", help=f"lon_min,lat_min,lon_max,lat_max (default: {DEFAULT_BBOX})"
+    )
     ap.add_argument("--tiles", help=f"Folium tile set (default: {DEFAULT_TILES})")
-    ap.add_argument("--sidebar-width", type=int, help="Sidebar width in px (default: 540)")
-    ap.add_argument("--stage", choices=["frontend","data","all"], default=None, help="Which stage to run: data preprocessing, frontend rendering, or both")
-    ap.add_argument("--data-dir", default=None, help="Directory to read/write preprocessed data (default: .preprocessed)")
-    ap.add_argument("--local-area", action="append", help="Optional local area(s) to include (repeat for multiple)")
+    ap.add_argument(
+        "--sidebar-width", type=int, help="Sidebar width in px (default: 540)"
+    )
+    ap.add_argument(
+        "--stage",
+        choices=["frontend", "data", "all"],
+        default=None,
+        help="Which stage to run: data preprocessing, frontend rendering, or both",
+    )
+    ap.add_argument(
+        "--data-dir",
+        default=None,
+        help="Directory to read/write preprocessed data (default: .preprocessed)",
+    )
+    ap.add_argument(
+        "--local-area",
+        action="append",
+        help="Optional local area(s) to include (repeat for multiple)",
+    )
     ap.add_argument("-v", "--verbose", action="store_true", help="Verbose logging")
 
     args = ap.parse_args()
@@ -117,6 +146,8 @@ def parse_args() -> argparse.Namespace:
 
     missing = [field for field in _REQUIRED_PATHS if getattr(args, field) is None]
     if missing:
-        ap.error(f"the following arguments are required (supply via CLI or config): {', '.join(missing)}")
+        ap.error(
+            f"the following arguments are required (supply via CLI or config): {', '.join(missing)}"
+        )
 
     return args

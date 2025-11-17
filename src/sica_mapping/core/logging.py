@@ -24,7 +24,13 @@ class ProgressReporter:
 
     def __enter__(self) -> "ProgressReporter":
         if tqdm is not None:
-            self._tqdm = tqdm(total=self.total_steps, desc=self.label, unit="step", leave=False, dynamic_ncols=True)
+            self._tqdm = tqdm(
+                total=self.total_steps,
+                desc=self.label,
+                unit="step",
+                leave=False,
+                dynamic_ncols=True,
+            )
         else:
             logger.info("%s started", self.label)
         return self
@@ -129,7 +135,9 @@ def configure_logging(verbose: bool = False) -> None:
             while frame and frame.f_code.co_filename == logging.__file__:
                 frame = frame.f_back
                 depth += 1
-            _loguru_logger.opt(depth=depth, exception=record.exc_info).log(level, record.getMessage())
+            _loguru_logger.opt(depth=depth, exception=record.exc_info).log(
+                level, record.getMessage()
+            )
 
     logging.basicConfig(handlers=[InterceptHandler()], level=logging.DEBUG)
     logger.setLevel(logging.DEBUG if verbose else logging.INFO)

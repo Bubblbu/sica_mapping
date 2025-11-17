@@ -29,7 +29,6 @@ from .spatial import (
     parse_blocks,
     aggregate_blocks,
 )
-from .tables import buildings_table, blocks_table, landlords_table
 from .vtu import (
     prepare_membership_records,
     membership_records_by_address,
@@ -85,7 +84,9 @@ BUILDING_METRICS = {
 }
 
 
-def load_inputs(buildings_path: str, addresses_path: str, blocks_path: str, vtu_path: str):
+def load_inputs(
+    buildings_path: str, addresses_path: str, blocks_path: str, vtu_path: str
+):
     bldg_df = normalize_cols(read_any_csv(buildings_path))
     addr_df = normalize_cols(read_any_csv(addresses_path))
     blocks_raw = normalize_cols(read_any_csv(blocks_path))
@@ -110,7 +111,9 @@ def _summarize_metric(series: pd.Series, *, meta: dict) -> dict | None:
     if bins is None:
         bins = min(24, max(6, int(np.sqrt(len(data)))))
     use_log: bool = False
-    can_use_log = positive_min is not None and positive_min > 0.0 and max_val > positive_min
+    can_use_log = (
+        positive_min is not None and positive_min > 0.0 and max_val > positive_min
+    )
     force_log = bool(meta.get("force_log"))
     if can_use_log:
         explicit = meta.get("use_log")
@@ -125,7 +128,9 @@ def _summarize_metric(series: pd.Series, *, meta: dict) -> dict | None:
     if force_log and not use_log and can_use_log:
         use_log = True
     if use_log:
-        safe_min = max(positive_min if positive_min and positive_min > 0 else max_val, 1e-6)
+        safe_min = max(
+            positive_min if positive_min and positive_min > 0 else max_val, 1e-6
+        )
         clipped = data.copy()
         non_positive_mask = clipped <= 0
         clipped[non_positive_mask] = safe_min
@@ -246,8 +251,14 @@ def write_cached_data(data: dict[str, Any], data_dir: Path) -> None:
     _write_cache(data_dir / PIPELINE_CACHE_FILES["points"], pts_records)
 
     blocks_df = data["blocks"].copy()
-    blocks_df["geom_geojson"] = blocks_df["geom_parsed"].apply(lambda geom: geom.__geo_interface__ if geom else None)
-    blocks_records = _sanitize_records(blocks_df.drop(columns=["geom_parsed"], errors="ignore").to_dict(orient="records"))
+    blocks_df["geom_geojson"] = blocks_df["geom_parsed"].apply(
+        lambda geom: geom.__geo_interface__ if geom else None
+    )
+    blocks_records = _sanitize_records(
+        blocks_df.drop(columns=["geom_parsed"], errors="ignore").to_dict(
+            orient="records"
+        )
+    )
     _write_cache(data_dir / PIPELINE_CACHE_FILES["blocks"], blocks_records)
 
     filter_cfg = _sanitize_value(data["filter_config"])
@@ -258,7 +269,9 @@ def load_cached_data(data_dir: Path) -> dict[str, Any]:
     data_dir = Path(data_dir)
     logger.info("Loading preprocessed artifacts from %s", data_dir)
 
-    with (data_dir / PIPELINE_CACHE_FILES["points"]).open("r", encoding="utf-8") as handle:
+    with (data_dir / PIPELINE_CACHE_FILES["points"]).open(
+        "r", encoding="utf-8"
+    ) as handle:
         pts_records = json.load(handle)
     pts_df = pd.DataFrame(pts_records)
     if not pts_df.empty:
@@ -266,15 +279,24 @@ def load_cached_data(data_dir: Path) -> dict[str, Any]:
         if "local_area" not in pts_df.columns:
             pts_df["local_area"] = "(Unknown)"
 
-    with (data_dir / PIPELINE_CACHE_FILES["blocks"]).open("r", encoding="utf-8") as handle:
+    with (data_dir / PIPELINE_CACHE_FILES["blocks"]).open(
+        "r", encoding="utf-8"
+    ) as handle:
         blocks_records = json.load(handle)
     blocks_df = pd.DataFrame(blocks_records)
     if not blocks_df.empty:
         blocks_df = blocks_df.convert_dtypes()
-        if "geom_geojson" in blocks_df.columns and "geom_parsed" not in blocks_df.columns:
-            blocks_df["geom_parsed"] = blocks_df["geom_geojson"].apply(lambda g: shape(g) if g else None)
+        if (
+            "geom_geojson" in blocks_df.columns
+            and "geom_parsed" not in blocks_df.columns
+        ):
+            blocks_df["geom_parsed"] = blocks_df["geom_geojson"].apply(
+                lambda g: shape(g) if g else None
+            )
 
-    with (data_dir / PIPELINE_CACHE_FILES["filters"]).open("r", encoding="utf-8") as handle:
+    with (data_dir / PIPELINE_CACHE_FILES["filters"]).open(
+        "r", encoding="utf-8"
+    ) as handle:
         filter_cfg = json.load(handle)
 
     return {
@@ -286,7 +308,9 @@ def load_cached_data(data_dir: Path) -> dict[str, Any]:
 
 def cached_data_exists(data_dir: Path) -> bool:
     data_dir = Path(data_dir)
-    return all((data_dir / filename).exists() for filename in PIPELINE_CACHE_FILES.values())
+    return all(
+        (data_dir / filename).exists() for filename in PIPELINE_CACHE_FILES.values()
+    )
 
 
 def run_data_pipeline(
@@ -300,7 +324,9 @@ def run_data_pipeline(
     logger.info("Starting data pipeline")
     progress_steps = 9
     with ProgressReporter(progress_steps, label="Data stage") as progress:
-        bldg_df, addr_df, blocks_raw, vtu_df = load_inputs(buildings_path, addresses_path, blocks_path, vtu_path)
+        bldg_df, addr_df, blocks_raw, vtu_df = load_inputs(
+            buildings_path, addresses_path, blocks_path, vtu_path
+        )
         progress.step("Loaded source tables")
         logger.info(
             "Loaded datasets — buildings: %d, addresses: %d, blocks: %d, membership rows: %d",
@@ -314,11 +340,17 @@ def run_data_pipeline(
         progress.step("Prepared address coordinates")
         if local_areas:
             logger.info("Filtering to local areas: %s", local_areas)
-        west, owner_col = select_west_end_buildings(bldg_df, addr_key_from_freeform, allowed_areas=local_areas)
+        west, owner_col = select_west_end_buildings(
+            bldg_df, addr_key_from_freeform, allowed_areas=local_areas
+        )
         total_buildings_raw = len(west)
         unknown_local_areas = int((west["local_area"] == "(Unknown)").sum())
         if unknown_local_areas:
-            percent_unknown = (unknown_local_areas / total_buildings_raw * 100.0) if total_buildings_raw else 0.0
+            percent_unknown = (
+                (unknown_local_areas / total_buildings_raw * 100.0)
+                if total_buildings_raw
+                else 0.0
+            )
             logger.warning(
                 "Local area missing for %d of %d buildings (%.1f%%)",
                 unknown_local_areas,
@@ -342,8 +374,18 @@ def run_data_pipeline(
                 unmatched_count,
             )
             if unmatched_count:
-                sample_missing = joined.loc[~matched_mask, "address"].dropna().astype(str).head(10).tolist()
-                logger.warning("Sample unmatched addresses (first %d): %s", len(sample_missing), sample_missing)
+                sample_missing = (
+                    joined.loc[~matched_mask, "address"]
+                    .dropna()
+                    .astype(str)
+                    .head(10)
+                    .tolist()
+                )
+                logger.warning(
+                    "Sample unmatched addresses (first %d): %s",
+                    len(sample_missing),
+                    sample_missing,
+                )
         else:
             logger.info("Address match coverage: no building records after filtering")
         progress.step("Matched buildings with addresses")
@@ -352,7 +394,9 @@ def run_data_pipeline(
         membership_payload = membership_records_by_address(members_df)
         active_counts = compute_vtu_counts(members_df, active_only=True)
         all_counts = compute_vtu_counts(members_df, active_only=False)
-        joined["members_payload"] = joined["addr_key"].map(lambda key: membership_payload.get(key, []))
+        joined["members_payload"] = joined["addr_key"].map(
+            lambda key: membership_payload.get(key, [])
+        )
         joined = attach_vtu_metrics(joined, active_counts, all_counts)
         progress.step("Merged VTU membership metrics")
 
@@ -406,7 +450,12 @@ def run_data_pipeline(
                 lat_min_combined = min(bbox[1], dynamic_bbox[1])
                 lon_max_combined = max(bbox[2], dynamic_bbox[2])
                 lat_max_combined = max(bbox[3], dynamic_bbox[3])
-                blocks_bbox = (lon_min_combined, lat_min_combined, lon_max_combined, lat_max_combined)
+                blocks_bbox = (
+                    lon_min_combined,
+                    lat_min_combined,
+                    lon_max_combined,
+                    lat_max_combined,
+                )
         else:
             blocks_bbox = bbox
 
@@ -418,7 +467,9 @@ def run_data_pipeline(
         filter_cfg = membership_filter_config(members_df)
         building_metrics = build_building_metrics(pts_df)
         filter_cfg["building_metrics"] = building_metrics
-        filter_cfg["building_metric_order"] = [key for key in BUILDING_METRICS if key in building_metrics]
+        filter_cfg["building_metric_order"] = [
+            key for key in BUILDING_METRICS if key in building_metrics
+        ]
 
         pts_with_area = pts_df.copy()
         pts_with_area["local_area"] = pts_with_area["local_area"].fillna("(Unknown)")
@@ -429,7 +480,9 @@ def run_data_pipeline(
             .sort_values(ascending=False)
         )
         neighbourhood_units = (
-            pts_with_area.groupby("local_area")["units"].sum().sort_values(ascending=False)
+            pts_with_area.groupby("local_area")["units"]
+            .sum()
+            .sort_values(ascending=False)
         )
         filter_cfg["neighbourhoods"] = [
             {
@@ -440,7 +493,9 @@ def run_data_pipeline(
             for area, count in neighbourhood_counts.items()
         ]
         filter_cfg["bounds"] = bounds
-        total_units = int(pd.to_numeric(pts_df["units"], errors="coerce").fillna(0).sum())
+        total_units = int(
+            pd.to_numeric(pts_df["units"], errors="coerce").fillna(0).sum()
+        )
         total_vtu_buildings = int((pts_df["has_vtu_member"]).sum())
         filter_cfg["dataset_totals"] = {
             "buildings": int(len(pts_df)),
@@ -448,9 +503,9 @@ def run_data_pipeline(
             "units": total_units,
             "vtu_buildings": total_vtu_buildings,
         }
-        filter_cfg["blocks_total_units_max"] = int(
-            blocks_merged["total_units"].max()
-        ) if not blocks_merged.empty else 0
+        filter_cfg["blocks_total_units_max"] = (
+            int(blocks_merged["total_units"].max()) if not blocks_merged.empty else 0
+        )
         progress.step("Prepared filter metadata")
         progress.finish("Data stage complete")
 

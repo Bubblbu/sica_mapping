@@ -40,7 +40,11 @@ def _ensure_output_path(path: Path) -> Path:
     if original.is_absolute():
         target = Path("www") / original.name
     else:
-        target = original if original.parts and original.parts[0] == "www" else Path("www") / original
+        target = (
+            original
+            if original.parts and original.parts[0] == "www"
+            else Path("www") / original
+        )
     target.parent.mkdir(parents=True, exist_ok=True)
     return target
 
@@ -72,30 +76,42 @@ def build_map(args) -> None:
     local_areas = args.local_area if args.local_area else None
 
     if args.stage in {"data", "all"}:
-        pipeline_data = run_data_pipeline(args.buildings, args.addresses, args.blocks, args.vtu, bbox, local_areas)
+        pipeline_data = run_data_pipeline(
+            args.buildings, args.addresses, args.blocks, args.vtu, bbox, local_areas
+        )
         if data_dir:
             write_cached_data(pipeline_data, data_dir)
         else:
-            logger.warning("Data stage requested but no data directory specified; skipping cache write")
+            logger.warning(
+                "Data stage requested but no data directory specified; skipping cache write"
+            )
         if args.stage == "data":
             return
 
     if pipeline_data is None:
         if data_dir and cached_data_exists(data_dir):
             pipeline_data = load_cached_data(data_dir)
-            if "blocks" in pipeline_data and "geom_geojson" in pipeline_data["blocks"].columns and "geom_parsed" not in pipeline_data["blocks"].columns:
-                pipeline_data["blocks"]["geom_parsed"] = pipeline_data["blocks"]["geom_geojson"].apply(
-                    lambda g: shape(g) if g else None
-                )
+            if (
+                "blocks" in pipeline_data
+                and "geom_geojson" in pipeline_data["blocks"].columns
+                and "geom_parsed" not in pipeline_data["blocks"].columns
+            ):
+                pipeline_data["blocks"]["geom_parsed"] = pipeline_data["blocks"][
+                    "geom_geojson"
+                ].apply(lambda g: shape(g) if g else None)
         else:
-            pipeline_data = run_data_pipeline(args.buildings, args.addresses, args.blocks, args.vtu, bbox, local_areas)
+            pipeline_data = run_data_pipeline(
+                args.buildings, args.addresses, args.blocks, args.vtu, bbox, local_areas
+            )
             if data_dir:
                 write_cached_data(pipeline_data, data_dir)
 
     pts_df: pd.DataFrame = pipeline_data["pts"].copy()
     blocks_merged: pd.DataFrame = pipeline_data["blocks"].copy()
     if "geom_parsed" not in blocks_merged and "geom_geojson" in blocks_merged:
-        blocks_merged["geom_parsed"] = blocks_merged["geom_geojson"].apply(lambda g: shape(g) if g else None)
+        blocks_merged["geom_parsed"] = blocks_merged["geom_geojson"].apply(
+            lambda g: shape(g) if g else None
+        )
     filter_cfg = pipeline_data["filter_config"]
 
     bounds_info = filter_cfg.get("bounds") if isinstance(filter_cfg, dict) else None
@@ -136,24 +152,46 @@ def build_map(args) -> None:
         zoom_start = 13
 
     vmax = compute_vmax(pts_df)
-    m = folium.Map(location=[center_lat, center_lon], zoom_start=zoom_start, tiles=args.tiles)
+    m = folium.Map(
+        location=[center_lat, center_lon], zoom_start=zoom_start, tiles=args.tiles
+    )
     fc = blocks_feature_collection(blocks_merged)
     blocks_geo = add_blocks_layer(m, fc)
-    _layer_vtu, _layer_non, layer_vtu_name, layer_non_name, marker_metadata = add_buildings_layers(m, pts_df, vmax)
+    _layer_vtu, _layer_non, layer_vtu_name, layer_non_name, marker_metadata = (
+        add_buildings_layers(m, pts_df, vmax)
+    )
 
-    if bounds_info and all(k in bounds_info for k in ("lat_min", "lon_min", "lat_max", "lon_max")):
-        m.fit_bounds([[bounds_info["lat_min"], bounds_info["lon_min"]], [bounds_info["lat_max"], bounds_info["lon_max"]]])
+    if bounds_info and all(
+        k in bounds_info for k in ("lat_min", "lon_min", "lat_max", "lon_max")
+    ):
+        m.fit_bounds(
+            [
+                [bounds_info["lat_min"], bounds_info["lon_min"]],
+                [bounds_info["lat_max"], bounds_info["lon_max"]],
+            ]
+        )
     elif not pts_df.dropna(subset=["lat", "lon"]).empty:
         valid_coords = pts_df.dropna(subset=["lat", "lon"])
-        m.fit_bounds([[float(valid_coords["lat"].min()), float(valid_coords["lon"].min())],
-                      [float(valid_coords["lat"].max()), float(valid_coords["lon"].max())]])
+        m.fit_bounds(
+            [
+                [float(valid_coords["lat"].min()), float(valid_coords["lon"].min())],
+                [float(valid_coords["lat"].max()), float(valid_coords["lon"].max())],
+            ]
+        )
 
     b_tbl = buildings_table(pts_df)
     k_tbl = blocks_table(blocks_merged)
     l_tbl = landlords_table(pts_df)
-    m.get_root().html.add_child(folium.Element(
-        sidebar_html(rows_buildings(b_tbl), rows_blocks(k_tbl), rows_landlords(l_tbl), args.sidebar_width)
-    ))
+    m.get_root().html.add_child(
+        folium.Element(
+            sidebar_html(
+                rows_buildings(b_tbl),
+                rows_blocks(k_tbl),
+                rows_landlords(l_tbl),
+                args.sidebar_width,
+            )
+        )
+    )
     output_path = _ensure_output_path(Path(args.out))
     output_dir = output_path.parent
     asset_base = output_path.stem or "index"
@@ -192,16 +230,18 @@ def build_map(args) -> None:
         encoding="utf-8",
     )
 
-    m.get_root().html.add_child(folium.Element(
-        wiring_js(
-            blocks_geo.get_name(),
-            layer_vtu_name,
-            layer_non_name,
-            filter_config_name,
-            marker_metadata_name,
-            building_records_name,
+    m.get_root().html.add_child(
+        folium.Element(
+            wiring_js(
+                blocks_geo.get_name(),
+                layer_vtu_name,
+                layer_non_name,
+                filter_config_name,
+                marker_metadata_name,
+                building_records_name,
+            )
         )
-    ))
+    )
 
     legends = legends_html(vmax, args.sidebar_width, filter_cfg)
     for legend in legends:

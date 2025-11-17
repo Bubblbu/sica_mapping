@@ -8,22 +8,24 @@ from html import escape
 
 
 def buildings_table(pts_df: pd.DataFrame) -> pd.DataFrame:
-    tbl = pts_df[[
-        "b_id",
-        "address",
-        "local_area",
-        "block_id",
-        "units",
-        "member_count",
-        "member_share_building",
-        "year_built",
-        "owner_group",
-        "owner_key",
-        "member_count_all",
-        "value_land",
-        "value_bldg",
-        "bldg_land_ratio",
-    ]].copy()
+    tbl = pts_df[
+        [
+            "b_id",
+            "address",
+            "local_area",
+            "block_id",
+            "units",
+            "member_count",
+            "member_share_building",
+            "year_built",
+            "owner_group",
+            "owner_key",
+            "member_count_all",
+            "value_land",
+            "value_bldg",
+            "bldg_land_ratio",
+        ]
+    ].copy()
     tbl["member_share_pct"] = (tbl["member_share_building"] * 100).round(0).astype(int)
     return tbl.drop(columns=["member_share_building"]).sort_values(
         ["member_count", "units"], ascending=[False, False]
@@ -34,28 +36,34 @@ def blocks_table(blocks_merged: pd.DataFrame) -> pd.DataFrame:
     tbl = blocks_merged.copy()
     tbl["median_year_built"] = tbl["median_year_built"].round().astype("Int64")
     tbl["share_pct"] = (tbl["member_share"] * 100).round(0).astype(int)
-    return tbl[[
-        "block_id",
-        "buildings",
-        "total_units",
-        "median_year_built",
-        "member_buildings",
-        "total_members",
-        "share_pct",
-        "member_share",
-    ]].sort_values("share_pct", ascending=False)
+    return tbl[
+        [
+            "block_id",
+            "buildings",
+            "total_units",
+            "median_year_built",
+            "member_buildings",
+            "total_members",
+            "share_pct",
+            "member_share",
+        ]
+    ].sort_values("share_pct", ascending=False)
 
 
 def landlords_table(pts_df: pd.DataFrame) -> pd.DataFrame:
     owners_df = pts_df.copy()
     owners_df["owner_group"] = owners_df["owner_group"].fillna("(Unknown)")
     owners_df["owner_key"] = owners_df["owner_key"].fillna("unknown")
-    landlords = owners_df.groupby(["owner_group", "owner_key"]).agg(
-        buildings=("address", "count"),
-        total_units=("units", "sum"),
-        member_buildings=("has_vtu_member", "sum"),
-        total_members=("member_count", "sum"),
-    ).reset_index()
+    landlords = (
+        owners_df.groupby(["owner_group", "owner_key"])
+        .agg(
+            buildings=("address", "count"),
+            total_units=("units", "sum"),
+            member_buildings=("has_vtu_member", "sum"),
+            total_members=("member_count", "sum"),
+        )
+        .reset_index()
+    )
     landlords["share_bldgs"] = np.where(
         landlords["buildings"] > 0,
         landlords["member_buildings"] / landlords["buildings"],
@@ -78,8 +86,14 @@ def rows_buildings(df: pd.DataFrame) -> str:
         year_val = "" if pd.isna(r.year_built) else int(r.year_built)
         val_land = "" if pd.isna(r.value_land) else int(round(r.value_land))
         val_bldg = "" if pd.isna(r.value_bldg) else int(round(r.value_bldg))
-        ratio_val = "" if pd.isna(r.bldg_land_ratio) else round(float(r.bldg_land_ratio), 3)
-        member_total = int(r.member_count_all) if hasattr(r, "member_count_all") else int(r.member_count)
+        ratio_val = (
+            "" if pd.isna(r.bldg_land_ratio) else round(float(r.bldg_land_ratio), 3)
+        )
+        member_total = (
+            int(r.member_count_all)
+            if hasattr(r, "member_count_all")
+            else int(r.member_count)
+        )
         bid = int(r.b_id)
         owner_key = escape(str(r.owner_key))
         local_area = "" if pd.isna(r.local_area) else str(r.local_area)
@@ -102,18 +116,18 @@ def rows_buildings(df: pd.DataFrame) -> str:
                 f'data-area="{escape(local_area)}" '
                 f'data-value-land="{val_land}" data-value-bldg="{val_bldg}" '
                 f'data-value-ratio="{ratio_val}" data-units="{units_val}" '
-                f'data-member-total="{member_total}" data-search="{search_attr}">' \
+                f'data-member-total="{member_total}" data-search="{search_attr}">'
                 f'<td class="select-cell"><input type="checkbox" class="row-select" '
                 f'data-type="building" data-target="{bid}"></td>'
-                f'<td>{escape(str(r.address))}</td>'
+                f"<td>{escape(str(r.address))}</td>"
                 f'<td data-sort-value="{escape(local_area)}">{escape(local_area)}</td>'
                 f'<td data-sort-value="{block_val}">{block_val}</td>'
                 f'<td data-sort-value="{units_val}">{units_val}</td>'
                 f'<td data-sort-value="{int(r.member_count)}">{int(r.member_count)}</td>'
                 f'<td data-sort-value="{int(r.member_share_pct)}">{int(r.member_share_pct)}%</td>'
-                f'<td>{escape(str(r.owner_group))}</td>'
+                f"<td>{escape(str(r.owner_group))}</td>"
                 f'<td data-sort-value="{year_val}">{year_val}</td>'
-                f'</tr>'
+                f"</tr>"
             )
         )
     return "\n".join(rows)
@@ -135,7 +149,7 @@ def rows_blocks(df: pd.DataFrame) -> str:
             f'<td data-sort-value="{int(r.member_buildings)}">{int(r.member_buildings)}</td>'
             f'<td data-sort-value="{int(r.total_members)}">{int(r.total_members)}</td>'
             f'<td data-sort-value="{int(r.share_pct)}">{int(r.share_pct)}%</td>'
-            f'</tr>'
+            f"</tr>"
         )
     return "\n".join(rows)
 
@@ -151,13 +165,13 @@ def rows_landlords(df: pd.DataFrame) -> str:
             f'<tr data-owner="{owner_key}">'  # owner
             f'<td class="select-cell"><input type="checkbox" class="row-select" '
             f'data-type="owner" data-target="{owner_key}"></td>'
-            f'<td>{escape(str(r.owner_group))}</td>'
+            f"<td>{escape(str(r.owner_group))}</td>"
             f'<td data-sort-value="{int(r.buildings)}">{int(r.buildings)}</td>'
             f'<td data-sort-value="{units_val}">{units_val}</td>'
             f'<td data-sort-value="{int(r.member_buildings)}">{int(r.member_buildings)}</td>'
             f'<td data-sort-value="{int(r.total_members)}">{int(r.total_members)}</td>'
             f'<td data-sort-value="{share_pct}">{share_pct}%</td>'
             f'<td data-sort-value="{per_100}">{per_100}</td>'
-            f'</tr>'
+            f"</tr>"
         )
     return "\n".join(rows)
