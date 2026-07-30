@@ -31,3 +31,4 @@ coverage.xml
 www/
 .preprocessed/
 .uv-cache/
+data/sica_core.db
