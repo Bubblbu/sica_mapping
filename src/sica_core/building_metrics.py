@@ -49,6 +49,14 @@ BUILDING_METRICS = {
         "bins": 18,
         "force_log": True,
     },
+    "year_built": {
+        "label": "Year built",
+        "format": "number",
+        "type": "int",
+        "step": 1,
+        "attr": "year-built",
+        "bins": 24,
+    },
 }
 
 

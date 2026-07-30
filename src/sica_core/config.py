@@ -19,7 +19,7 @@ except ModuleNotFoundError:  # pragma: no cover - only for <3.11
 
 DEFAULT_DB_PATH = "data/sica_core.db"
 DEFAULT_BBOX = "-123.18,49.265,-123.10,49.295"
-_REQUIRED_PATHS = ("buildings", "addresses", "blocks", "vtu")
+_REQUIRED_PATHS = ("buildings", "addresses", "blocks", "block_numbers", "vtu")
 
 
 @dataclass
@@ -27,6 +27,7 @@ class IngestConfig:
     buildings: str
     addresses: str
     blocks: str
+    block_numbers: str
     vtu: str
     db_path: str = DEFAULT_DB_PATH
     bbox: tuple[float, float, float, float] = (-123.18, 49.265, -123.10, 49.295)
@@ -67,6 +68,7 @@ def load_ingest_config(path: str) -> IngestConfig:
         buildings=str(flat["buildings"]),
         addresses=str(flat["addresses"]),
         blocks=str(flat["blocks"]),
+        block_numbers=str(flat["block_numbers"]),
         vtu=str(flat["vtu"]),
         db_path=str(flat.get("sica_core_db", DEFAULT_DB_PATH)),
         bbox=bbox,

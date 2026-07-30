@@ -21,6 +21,7 @@ import sqlite3
 
 from ..config import load_ingest_config, IngestConfig
 from ..db import get_connection, init_db
+from .block_numbers import ingest_raw_block_numbers
 from .blocks import ingest_blocks
 from .membership import ingest_membership
 from .merge import run_merge
@@ -38,6 +39,8 @@ def run_ingest(conn: sqlite3.Connection, config: IngestConfig) -> dict[str, int]
     logger.info("raw_addresses: %d rows", counts["raw_addresses"])
     counts["blocks"] = ingest_blocks(conn, config.blocks, config.bbox)
     logger.info("blocks: %d rows", counts["blocks"])
+    counts["raw_block_numbers"] = ingest_raw_block_numbers(conn, config.block_numbers)
+    logger.info("raw_block_numbers: %d rows", counts["raw_block_numbers"])
     counts["buildings"] = run_merge(conn)
     logger.info("buildings: %d rows", counts["buildings"])
     counts["vtu_membership"] = ingest_membership(conn, config.vtu)

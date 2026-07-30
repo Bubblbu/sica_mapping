@@ -9,6 +9,7 @@ DROP TABLE IF EXISTS landlords;
 DROP TABLE IF EXISTS blocks;
 DROP TABLE IF EXISTS raw_addresses;
 DROP TABLE IF EXISTS raw_buildings;
+DROP TABLE IF EXISTS raw_block_numbers;
 DROP VIEW IF EXISTS block_stats;
 
 CREATE TABLE raw_buildings (
@@ -55,6 +56,19 @@ CREATE TABLE raw_addresses (
 );
 CREATE INDEX idx_raw_addresses_street ON raw_addresses(std_street);
 CREATE INDEX idx_raw_addresses_civic ON raw_addresses(civic_number);
+
+-- Vancouver Open Data's "block-numbers" dataset: one point per city block,
+-- carrying the City's own authoritative geo_local_area — used only to
+-- resolve local_area for blocks with zero buildings (see export.py /
+-- spatial.py's resolve_local_area_from_block_numbers).
+CREATE TABLE raw_block_numbers (
+    raw_block_number_id INTEGER PRIMARY KEY,
+    label TEXT,
+    geo_local_area TEXT,
+    geom TEXT,
+    geo_point_2d TEXT,      -- "lat, lon" verbatim
+    ingested_at TEXT NOT NULL
+);
 
 CREATE TABLE blocks (
     block_id INTEGER PRIMARY KEY,

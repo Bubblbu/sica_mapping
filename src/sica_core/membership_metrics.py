@@ -60,7 +60,14 @@ def prepare_membership_metrics(members_df: pd.DataFrame, now: pd.Timestamp) -> p
 
 def compute_building_member_metrics(members_df: pd.DataFrame, now: pd.Timestamp) -> pd.DataFrame:
     """members_df: vtu_membership rows with a non-null building_id."""
-    columns = ["building_id", "member_count", "member_count_all", "has_vtu_member", "members_payload"]
+    columns = [
+        "building_id",
+        "member_count",
+        "member_count_all",
+        "has_vtu_member",
+        "members_payload",
+        "latest_membership_year",
+    ]
     if members_df.empty:
         return pd.DataFrame(columns=columns)
 
@@ -69,6 +76,12 @@ def compute_building_member_metrics(members_df: pd.DataFrame, now: pd.Timestamp)
         metrics[metrics["is_active_default"]].groupby("building_id").size().rename("member_count_active")
     )
     all_counts = metrics.groupby("building_id").size().rename("member_count_all")
+    latest_year = (
+        metrics[metrics["has_member_tag"]]
+        .groupby("building_id")["latest_membership_year"]
+        .max()
+        .rename("latest_membership_year")
+    )
 
     payload: dict[int, list[dict[str, object]]] = {}
     for building_id, group in metrics.groupby("building_id"):
@@ -92,7 +105,7 @@ def compute_building_member_metrics(members_df: pd.DataFrame, now: pd.Timestamp)
             )
         payload[building_id] = records
 
-    out = pd.concat([active_counts, all_counts], axis=1).reset_index()
+    out = pd.concat([active_counts, all_counts, latest_year], axis=1).reset_index()
     out["member_count_active"] = out["member_count_active"].fillna(0).astype(int)
     out["member_count_all"] = out["member_count_all"].fillna(0).astype(int)
     out["member_count"] = out["member_count_active"]
