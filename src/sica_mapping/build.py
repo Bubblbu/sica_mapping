@@ -153,7 +153,10 @@ def build_map(args) -> None:
 
     vmax = compute_vmax(pts_df)
     m = folium.Map(
-        location=[center_lat, center_lon], zoom_start=zoom_start, tiles=args.tiles
+        location=[center_lat, center_lon],
+        zoom_start=zoom_start,
+        tiles=args.tiles,
+        prefer_canvas=True,
     )
     fc = blocks_feature_collection(blocks_merged)
     blocks_geo = add_blocks_layer(m, fc)

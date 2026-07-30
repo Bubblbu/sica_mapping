@@ -558,6 +558,22 @@
       const yearSlider = document.getElementById('filter-updated-year');
       const yearLabel = document.getElementById('filter-updated-year-label');
       const hoodInputs = Array.from(document.querySelectorAll('.filter-neighbourhood-option'));
+
+      // Cached once: applyFilters() runs on every slider tick, so re-querying the DOM
+      // (and re-resolving each row's checkbox) on every call is the difference between
+      // a smooth drag and a janky one at ~5,000 building rows. Row sets never change
+      // after initial render — only their hidden/visible state does.
+      const buildingRows = Array.from(document.querySelectorAll('#buildings-table tbody tr'));
+      buildingRows.forEach(function(row) { row.__checkbox = row.querySelector('.row-select'); });
+
+      const landlordRows = Array.from(document.querySelectorAll('#landlords-table tbody tr'));
+      landlordRows.forEach(function(row) { row.__checkbox = row.querySelector('.row-select'); });
+
+      const blockRowById = {};
+      Array.from(document.querySelectorAll('#blocks-table tbody tr')).forEach(function(row) {
+        row.__checkbox = row.querySelector('.row-select');
+        blockRowById[row.getAttribute('data-block')] = row;
+      });
       const hoodSelectAllBtn = document.getElementById('hood-select-all');
       const hoodClearBtn = document.getElementById('hood-clear');
       const resetBtn = document.getElementById('filter-reset');
@@ -711,9 +727,9 @@
 
       function updateSummaryBar() {
         if (!summaryLabelEl || !summaryUnitsEl || !summaryMembersEl || !summaryRowsEl) return;
-        const allRows = Array.from(document.querySelectorAll('#buildings-table tbody tr'));
+        const allRows = buildingRows;
         const selectedRows = allRows.filter(function(row) {
-          const cb = row.querySelector('.row-select');
+          const cb = row.__checkbox;
           return cb && cb.checked;
         });
         const targetRows = selectedRows.length ? selectedRows : allRows.filter(function(row) {
@@ -991,6 +1007,21 @@
         ctrl.maxSlider.value = String(toSlider(maxVal));
       }
 
+      // Sliders fire 'input' many times per second while dragging. applyFilters() walks
+      // every building/block/landlord row, so calling it synchronously per event is what
+      // makes dragging a filter slider feel sluggish. Coalesce to at most once per
+      // animation frame instead — the label text still updates immediately below, only
+      // the expensive full-row-scan pass gets throttled.
+      let applyFiltersScheduled = false;
+      function scheduleApplyFilters() {
+        if (applyFiltersScheduled) return;
+        applyFiltersScheduled = true;
+        window.requestAnimationFrame(function() {
+          applyFiltersScheduled = false;
+          applyFilters();
+        });
+      }
+
       function makeSliderHandler(metric, role) {
         return function() {
           const ctrl = metricControls[metric];
@@ -1009,7 +1040,7 @@
             }
           }
           updateMetricLabels(metric);
-          applyFilters();
+          scheduleApplyFilters();
         };
       }
 
@@ -1183,7 +1214,7 @@
           opts.minYear = null;
         }
         const visibleBids = new Set();
-        document.querySelectorAll('#buildings-table tbody tr').forEach(function(row) {
+        buildingRows.forEach(function(row) {
           const bid = row.getAttribute('data-bid');
           const marker = window.buildingIndex[bid];
           const records = window.membershipData[bid] || [];
@@ -1221,7 +1252,7 @@
           }
 
           row.classList.toggle('hidden', !matches);
-          const checkbox = row.querySelector('.row-select');
+          const checkbox = row.__checkbox;
           if (!matches) {
             if (checkbox && checkbox.checked) {
               const current = marker ? (marker._selectionRefs || 0) : 0;
@@ -1243,11 +1274,11 @@
         Object.keys(window.blockBuildingIndex).forEach(function(blockId) {
           var ids = window.blockBuildingIndex[blockId] || [];
           var hasVisible = ids.some(function(id) { return visibleBids.has(String(id)); });
-          var row = document.querySelector('#blocks-table tbody tr[data-block="' + blockId + '"]');
+          var row = blockRowById[blockId];
           var layer = window.blocksIndex[blockId];
           if (row) {
             row.classList.toggle('hidden', !hasVisible);
-            const checkbox = row.querySelector('.row-select');
+            const checkbox = row.__checkbox;
             if (!hasVisible && checkbox && checkbox.checked) {
               checkbox.checked = false;
               if (layer) layer._selectionRefs = 0;
@@ -1257,11 +1288,17 @@
           setBlockFiltered(blockId, !hasVisible);
         });
 
-        document.querySelectorAll('#landlords-table tbody tr').forEach(function(row) {
+        // Was a per-row `document.querySelector('...:not(.hidden)')` CSS scan over all
+        // building rows for every one of ~1,500 landlords — O(landlords x buildings) via
+        // the selector engine, on every slider tick. window.ownerIndex (built once at
+        // load) plus the marker._isFiltered flag set just above give the same answer as
+        // a plain array check with no DOM/CSS involved.
+        landlordRows.forEach(function(row) {
           var owner = row.getAttribute('data-owner');
-          var hasVisible = !!document.querySelector('#buildings-table tbody tr[data-owner="' + owner + '"]:not(.hidden)');
+          var markers = window.ownerIndex[owner] || [];
+          var hasVisible = markers.some(function(m) { return !m._isFiltered; });
           row.classList.toggle('hidden', !hasVisible);
-          const checkbox = row.querySelector('.row-select');
+          const checkbox = row.__checkbox;
           if (!hasVisible && checkbox && checkbox.checked) {
             checkbox.checked = false;
             setOwnerSelection(owner, false);
@@ -1281,7 +1318,7 @@
       if (yearSlider) yearSlider.addEventListener('input', function() {
         updateYearLabel();
         if (yearToggle && yearToggle.checked) {
-          applyFilters();
+          scheduleApplyFilters();
         }
       });
       hoodInputs.forEach(function(inp) { inp.addEventListener('change', applyFilters); });
