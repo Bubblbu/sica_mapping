@@ -13,6 +13,8 @@ from ..core import (
     addr_key_from_freeform,
     clean_owner_label,
     normalize_street,
+    read_any_csv,
+    normalize_cols,
 )
 from .geometry import parse_geom, poly_to_geojson
 
@@ -304,6 +306,14 @@ def deduplicate_buildings(
                     if isinstance(candidate, list) and candidate:
                         payload = candidate
                         break
+        latest_year_series = (
+            g["latest_membership_year"].dropna()
+            if "latest_membership_year" in g.columns
+            else pd.Series(dtype=float)
+        )
+        latest_membership_year = (
+            float(latest_year_series.max()) if not latest_year_series.empty else np.nan
+        )
         return pd.Series(
             {
                 "address": addr,
@@ -323,6 +333,7 @@ def deduplicate_buildings(
                 "value_bldg": val_bldg,
                 "bldg_land_ratio": ratio,
                 "local_area": local_area,
+                "latest_membership_year": latest_membership_year,
             }
         )
 
@@ -363,8 +374,93 @@ def parse_blocks(
     return subset
 
 
+def resolve_local_area_from_block_numbers(
+    blocks_merged: pd.DataFrame, block_numbers_df: pd.DataFrame
+) -> pd.Series:
+    """Blocks with zero buildings have no local_area to take a mode from, and
+    default to "(Unknown)" (see aggregate_blocks). Resolve those from
+    Vancouver Open Data's "block-numbers" dataset instead (data/block-numbers.csv)
+    — one point per city block, carrying the City's own authoritative
+    geo_local_area. Primary: point-in-polygon (a block-numbers point almost
+    always lands inside exactly one of our block polygons). Fallback: nearest
+    block-numbers point by centroid distance, for the rare block with none
+    landing inside it. Populated blocks keep their buildings-derived mode,
+    untouched.
+    """
+    local_area = blocks_merged["local_area"].copy()
+    unknown_mask = local_area == "(Unknown)"
+    if not unknown_mask.any() or block_numbers_df.empty:
+        return local_area
+
+    bn = block_numbers_df.copy()
+    bn["geom_parsed"] = bn["geom"].apply(parse_geom)
+    bn = bn.dropna(subset=["geom_parsed", "geo_local_area"])
+    if bn.empty:
+        return local_area
+
+    block_geoms = list(blocks_merged["geom_parsed"])
+    block_ids = blocks_merged["block_id"].to_numpy()
+    block_tree = STRtree(block_geoms)
+
+    # Primary: point-in-polygon, one block-numbers point -> one of our blocks.
+    matches: dict[int, list[str]] = {}
+    for point, area in zip(bn["geom_parsed"], bn["geo_local_area"]):
+        for idx in np.atleast_1d(block_tree.query(point)):
+            geom = block_geoms[int(idx)]
+            if geom.contains(point) or geom.touches(point):
+                matches.setdefault(int(block_ids[int(idx)]), []).append(area)
+                break
+    resolved_by_block = {
+        bid: pd.Series(areas).mode().iloc[0] for bid, areas in matches.items()
+    }
+
+    # Fallback: nearest block-numbers point by centroid distance, for blocks
+    # that got zero points inside their polygon.
+    point_tree = STRtree(bn["geom_parsed"].tolist())
+    bn_areas = bn["geo_local_area"].to_numpy()
+    centroids = blocks_merged["geom_parsed"].apply(
+        lambda geom: geom.centroid if geom is not None else None
+    )
+    for idx in blocks_merged.index[unknown_mask]:
+        bid = int(blocks_merged.at[idx, "block_id"])
+        resolved = resolved_by_block.get(bid)
+        if resolved is None:
+            centroid = centroids.at[idx]
+            if centroid is not None:
+                nearest = point_tree.nearest(centroid)
+                resolved = bn_areas[int(nearest)]
+        if resolved:
+            local_area.at[idx] = resolved
+    return local_area
+
+
+def assign_block_labels(blocks_merged: pd.DataFrame) -> pd.Series:
+    """Human-readable block labels: "{local_area}-{NN}", numbered in reading
+    order (north-to-south, then west-to-east) within each neighbourhood.
+    block_id remains the join/index key everywhere else; this is a display-only
+    field.
+    """
+    centroids = blocks_merged["geom_parsed"].apply(
+        lambda geom: geom.centroid if geom is not None else None
+    )
+    order_df = pd.DataFrame(
+        {
+            "local_area": blocks_merged["local_area"],
+            "lat": centroids.apply(lambda c: c.y if c is not None else np.nan),
+            "lon": centroids.apply(lambda c: c.x if c is not None else np.nan),
+        },
+        index=blocks_merged.index,
+    )
+    labels = pd.Series(index=blocks_merged.index, dtype=object)
+    for area, group in order_df.groupby("local_area"):
+        ordered = group.sort_values(["lat", "lon"], ascending=[False, True])
+        for ordinal, idx in enumerate(ordered.index, start=1):
+            labels.at[idx] = f"{area}-{ordinal:02d}"
+    return labels
+
+
 def aggregate_blocks(
-    pts_df: pd.DataFrame, blocks_df: pd.DataFrame
+    pts_df: pd.DataFrame, blocks_df: pd.DataFrame, block_numbers_df: pd.DataFrame
 ) -> tuple[pd.DataFrame, pd.DataFrame]:
     pts = pts_df.copy()
     pts["block_id"] = point_in_block_ids(pts, blocks_df)
@@ -379,6 +475,13 @@ def aggregate_blocks(
         )
         .reset_index()
     )
+    local_area_by_block = (
+        pts.dropna(subset=["block_id"])
+        .groupby("block_id")["local_area"]
+        .agg(lambda s: s.mode().iloc[0] if not s.mode().empty else "(Unknown)")
+        .rename("local_area")
+    )
+    agg = agg.merge(local_area_by_block, on="block_id", how="left")
     merged = blocks_df.merge(agg, on="block_id", how="left").fillna(
         {
             "buildings": 0,
@@ -388,10 +491,13 @@ def aggregate_blocks(
             "total_members": 0,
         }
     )
+    merged["local_area"] = merged["local_area"].fillna("(Unknown)")
     merged = merged.reset_index(drop=True)
+    merged["local_area"] = resolve_local_area_from_block_numbers(merged, block_numbers_df)
     merged["member_share"] = np.where(
         merged["buildings"] > 0, merged["member_buildings"] / merged["buildings"], 0.0
     )
+    merged["block_label"] = assign_block_labels(merged)
     return merged, pts
 
 
@@ -406,6 +512,7 @@ def blocks_feature_collection(blocks_merged: pd.DataFrame) -> dict:
                     "geometry": gj,
                     "properties": {
                         "block_id": int(r["block_id"]),
+                        "block_label": str(r["block_label"]),
                         "buildings": int(r["buildings"]),
                         "total_units": int(r["total_units"]),
                         "median_year_built": None
@@ -417,6 +524,31 @@ def blocks_feature_collection(blocks_merged: pd.DataFrame) -> dict:
                     },
                 }
             )
+    return {"type": "FeatureCollection", "features": feats}
+
+
+def local_area_boundaries_feature_collection(path: str) -> dict:
+    """Vancouver Open Data's "local-area-boundary" dataset (22 neighbourhood
+    polygons, one row each) — a static reference layer for the map, unrelated
+    to the buildings/blocks pipeline. Read directly from its own CSV, not
+    threaded through run_data_pipeline/aggregate_blocks.
+    """
+    df = normalize_cols(read_any_csv(path))
+    feats = []
+    for _, r in df.iterrows():
+        geom = parse_geom(r.get("geom"))
+        if geom is None:
+            continue
+        gj = poly_to_geojson(geom)
+        if not gj:
+            continue
+        feats.append(
+            {
+                "type": "Feature",
+                "geometry": gj,
+                "properties": {"name": str(r.get("name") or "").strip()},
+            }
+        )
     return {"type": "FeatureCollection", "features": feats}
 
 

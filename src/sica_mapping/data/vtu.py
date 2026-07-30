@@ -115,6 +115,17 @@ def compute_vtu_counts(
     return counts
 
 
+def compute_latest_membership_year(members_df: pd.DataFrame) -> pd.DataFrame:
+    df = members_df[members_df["has_member_tag"]]
+    if df.empty:
+        return pd.DataFrame(columns=["addr_key", "latest_membership_year"])
+    return (
+        df.groupby("addr_key")["latest_membership_year"]
+        .max()
+        .reset_index()
+    )
+
+
 def membership_filter_config(members_df: pd.DataFrame) -> dict[str, object]:
     year_series = members_df["latest_membership_year"].dropna().astype(int)
     if year_series.empty:

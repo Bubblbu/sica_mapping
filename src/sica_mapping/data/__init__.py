@@ -17,6 +17,7 @@ from .spatial import (
     parse_blocks,
     aggregate_blocks,
     blocks_feature_collection,
+    local_area_boundaries_feature_collection,
     point_in_block_ids,
 )
 from .geometry import poly_to_geojson
@@ -51,6 +52,7 @@ __all__ = [
     "parse_blocks",
     "aggregate_blocks",
     "blocks_feature_collection",
+    "local_area_boundaries_feature_collection",
     "poly_to_geojson",
     "point_in_block_ids",
     "buildings_table",

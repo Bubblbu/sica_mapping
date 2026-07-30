@@ -34,6 +34,7 @@ from .vtu import (
     membership_records_by_address,
     membership_filter_config,
     compute_vtu_counts,
+    compute_latest_membership_year,
     attach_vtu_metrics,
 )
 
@@ -81,17 +82,30 @@ BUILDING_METRICS = {
         "bins": 18,
         "force_log": True,
     },
+    "year_built": {
+        "label": "Year built",
+        "format": "number",
+        "type": "int",
+        "step": 1,
+        "attr": "year-built",
+        "bins": 24,
+    },
 }
 
 
 def load_inputs(
-    buildings_path: str, addresses_path: str, blocks_path: str, vtu_path: str
+    buildings_path: str,
+    addresses_path: str,
+    blocks_path: str,
+    block_numbers_path: str,
+    vtu_path: str,
 ):
     bldg_df = normalize_cols(read_any_csv(buildings_path))
     addr_df = normalize_cols(read_any_csv(addresses_path))
     blocks_raw = normalize_cols(read_any_csv(blocks_path))
+    block_numbers_df = normalize_cols(read_any_csv(block_numbers_path))
     vtu_df = normalize_cols(read_any_csv(vtu_path))
-    return bldg_df, addr_df, blocks_raw, vtu_df
+    return bldg_df, addr_df, blocks_raw, block_numbers_df, vtu_df
 
 
 def _summarize_metric(series: pd.Series, *, meta: dict) -> dict | None:
@@ -317,6 +331,7 @@ def run_data_pipeline(
     buildings_path: str,
     addresses_path: str,
     blocks_path: str,
+    block_numbers_path: str,
     vtu_path: str,
     bbox: tuple[float, float, float, float],
     local_areas: list[str] | None = None,
@@ -324,15 +339,16 @@ def run_data_pipeline(
     logger.info("Starting data pipeline")
     progress_steps = 9
     with ProgressReporter(progress_steps, label="Data stage") as progress:
-        bldg_df, addr_df, blocks_raw, vtu_df = load_inputs(
-            buildings_path, addresses_path, blocks_path, vtu_path
+        bldg_df, addr_df, blocks_raw, block_numbers_df, vtu_df = load_inputs(
+            buildings_path, addresses_path, blocks_path, block_numbers_path, vtu_path
         )
         progress.step("Loaded source tables")
         logger.info(
-            "Loaded datasets — buildings: %d, addresses: %d, blocks: %d, membership rows: %d",
+            "Loaded datasets — buildings: %d, addresses: %d, blocks: %d, block numbers: %d, membership rows: %d",
             len(bldg_df),
             len(addr_df),
             len(blocks_raw),
+            len(block_numbers_df),
             len(vtu_df),
         )
 
@@ -394,10 +410,12 @@ def run_data_pipeline(
         membership_payload = membership_records_by_address(members_df)
         active_counts = compute_vtu_counts(members_df, active_only=True)
         all_counts = compute_vtu_counts(members_df, active_only=False)
+        latest_year_counts = compute_latest_membership_year(members_df)
         joined["members_payload"] = joined["addr_key"].map(
             lambda key: membership_payload.get(key, [])
         )
         joined = attach_vtu_metrics(joined, active_counts, all_counts)
+        joined = joined.merge(latest_year_counts, on="addr_key", how="left")
         progress.step("Merged VTU membership metrics")
 
         pts_df = deduplicate_buildings(joined, owner_col, sanitize_owner)
@@ -461,7 +479,7 @@ def run_data_pipeline(
 
         blocks_subset = parse_blocks(blocks_raw, blocks_bbox)
         progress.step("Parsed block geometries")
-        blocks_merged, pts_df = aggregate_blocks(pts_df, blocks_subset)
+        blocks_merged, pts_df = aggregate_blocks(pts_df, blocks_subset, block_numbers_df)
         progress.step("Aggregated block statistics")
 
         filter_cfg = membership_filter_config(members_df)
@@ -470,6 +488,17 @@ def run_data_pipeline(
         filter_cfg["building_metric_order"] = [
             key for key in BUILDING_METRICS if key in building_metrics
         ]
+        filter_cfg["membership_year_metric"] = _summarize_metric(
+            pts_df["latest_membership_year"],
+            meta={
+                "label": "Membership year",
+                "format": "number",
+                "type": "int",
+                "step": 1,
+                "attr": "latest-membership-year",
+                "bins": 12,
+            },
+        )
 
         pts_with_area = pts_df.copy()
         pts_with_area["local_area"] = pts_with_area["local_area"].fillna("(Unknown)")

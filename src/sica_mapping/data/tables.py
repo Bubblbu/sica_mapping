@@ -24,6 +24,8 @@ def buildings_table(pts_df: pd.DataFrame) -> pd.DataFrame:
             "value_land",
             "value_bldg",
             "bldg_land_ratio",
+            "has_vtu_member",
+            "latest_membership_year",
         ]
     ].copy()
     tbl["member_share_pct"] = (tbl["member_share_building"] * 100).round(0).astype(int)
@@ -36,9 +38,15 @@ def blocks_table(blocks_merged: pd.DataFrame) -> pd.DataFrame:
     tbl = blocks_merged.copy()
     tbl["median_year_built"] = tbl["median_year_built"].round().astype("Int64")
     tbl["share_pct"] = (tbl["member_share"] * 100).round(0).astype(int)
+    # Blocks with no buildings in this dataset fall back to "(Unknown)" (see
+    # assign_block_labels); sort those last rather than first so a viewer sees
+    # the actually-labeled, meaningful blocks before the empty-block bucket.
+    tbl["_is_unknown"] = tbl["block_label"].str.startswith("(Unknown)")
     return tbl[
         [
             "block_id",
+            "block_label",
+            "local_area",
             "buildings",
             "total_units",
             "median_year_built",
@@ -46,8 +54,11 @@ def blocks_table(blocks_merged: pd.DataFrame) -> pd.DataFrame:
             "total_members",
             "share_pct",
             "member_share",
+            "_is_unknown",
         ]
-    ].sort_values("share_pct", ascending=False)
+    ].sort_values(["_is_unknown", "block_label"], ascending=[True, True]).drop(
+        columns=["_is_unknown"]
+    )
 
 
 def landlords_table(pts_df: pd.DataFrame) -> pd.DataFrame:
@@ -84,6 +95,10 @@ def rows_buildings(df: pd.DataFrame) -> str:
         block_val = "" if pd.isna(r.block_id) else int(r.block_id)
         units_val = "" if pd.isna(r.units) else int(r.units)
         year_val = "" if pd.isna(r.year_built) else int(r.year_built)
+        has_vtu_val = 1 if bool(r.has_vtu_member) else 0
+        membership_year_val = (
+            "" if pd.isna(r.latest_membership_year) else int(r.latest_membership_year)
+        )
         val_land = "" if pd.isna(r.value_land) else int(round(r.value_land))
         val_bldg = "" if pd.isna(r.value_bldg) else int(round(r.value_bldg))
         ratio_val = (
@@ -116,6 +131,9 @@ def rows_buildings(df: pd.DataFrame) -> str:
                 f'data-area="{escape(local_area)}" '
                 f'data-value-land="{val_land}" data-value-bldg="{val_bldg}" '
                 f'data-value-ratio="{ratio_val}" data-units="{units_val}" '
+                f'data-year-built="{year_val}" '
+                f'data-has-vtu-member="{has_vtu_val}" '
+                f'data-latest-membership-year="{membership_year_val}" '
                 f'data-member-total="{member_total}" data-search="{search_attr}">'
                 f'<td class="select-cell"><input type="checkbox" class="row-select" '
                 f'data-type="building" data-target="{bid}"></td>'
@@ -137,12 +155,14 @@ def rows_blocks(df: pd.DataFrame) -> str:
     rows = []
     for r in df.itertuples(index=False):
         block_id = int(r.block_id)
+        block_label = escape(str(r.block_label))
+        local_area = "" if pd.isna(r.local_area) else str(r.local_area)
         year_val = "" if pd.isna(r.median_year_built) else int(r.median_year_built)
         rows.append(
-            f'<tr data-block="{block_id}">'  # block
+            f'<tr data-block="{block_id}" data-area="{escape(local_area)}">'  # block
             f'<td class="select-cell"><input type="checkbox" class="row-select" '
             f'data-type="block" data-target="{block_id}"></td>'
-            f'<td data-sort-value="{block_id}">{block_id}</td>'
+            f'<td data-sort-value="{block_label}">{block_label}</td>'
             f'<td data-sort-value="{int(r.buildings)}">{int(r.buildings)}</td>'
             f'<td data-sort-value="{int(r.total_units)}">{int(r.total_units)}</td>'
             f'<td data-sort-value="{year_val}">{year_val}</td>'
