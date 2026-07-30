@@ -18,6 +18,7 @@ from .data import (
     write_cached_data,
     load_cached_data,
     blocks_feature_collection,
+    local_area_boundaries_feature_collection,
     buildings_table,
     blocks_table,
     landlords_table,
@@ -29,6 +30,7 @@ from .frontend import (
     compute_vmax,
     add_blocks_layer,
     add_buildings_layers,
+    add_neighbourhoods_layer,
     sidebar_html,
     wiring_js,
     legends_html,
@@ -77,7 +79,13 @@ def build_map(args) -> None:
 
     if args.stage in {"data", "all"}:
         pipeline_data = run_data_pipeline(
-            args.buildings, args.addresses, args.blocks, args.vtu, bbox, local_areas
+            args.buildings,
+            args.addresses,
+            args.blocks,
+            args.block_numbers,
+            args.vtu,
+            bbox,
+            local_areas,
         )
         if data_dir:
             write_cached_data(pipeline_data, data_dir)
@@ -101,7 +109,13 @@ def build_map(args) -> None:
                 ].apply(lambda g: shape(g) if g else None)
         else:
             pipeline_data = run_data_pipeline(
-                args.buildings, args.addresses, args.blocks, args.vtu, bbox, local_areas
+                args.buildings,
+                args.addresses,
+                args.blocks,
+                args.block_numbers,
+                args.vtu,
+                bbox,
+                local_areas,
             )
             if data_dir:
                 write_cached_data(pipeline_data, data_dir)
@@ -163,6 +177,8 @@ def build_map(args) -> None:
     _layer_vtu, _layer_non, layer_vtu_name, layer_non_name, marker_metadata = (
         add_buildings_layers(m, pts_df, vmax)
     )
+    neighbourhoods_fc = local_area_boundaries_feature_collection(args.local_area_boundary)
+    neighbourhoods_geo = add_neighbourhoods_layer(m, neighbourhoods_fc)
 
     if bounds_info and all(
         k in bounds_info for k in ("lat_min", "lon_min", "lat_max", "lon_max")
@@ -239,6 +255,7 @@ def build_map(args) -> None:
                 blocks_geo.get_name(),
                 layer_vtu_name,
                 layer_non_name,
+                neighbourhoods_geo.get_name(),
                 filter_config_name,
                 marker_metadata_name,
                 building_records_name,

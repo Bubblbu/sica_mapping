@@ -3,6 +3,8 @@
 buildings = "data/buildings.csv"
 addresses = "data/property_addresses.csv"
 blocks = "data/block-outlines.csv"
+block_numbers = "data/block-numbers.csv"
+local_area_boundary = "data/local-area-boundary.csv"
 vtu = "data/membership_full.csv"
 sica_core_db = "data/sica_core.db"
 

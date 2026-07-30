@@ -14,7 +14,14 @@ DEFAULT_TILES = "cartodbpositron"
 DEFAULT_SIDEBAR_WIDTH = 540
 DEFAULT_STAGE = "frontend"
 DEFAULT_DATA_DIR = ".preprocessed"
-_REQUIRED_PATHS = ("buildings", "addresses", "blocks", "vtu")
+_REQUIRED_PATHS = (
+    "buildings",
+    "addresses",
+    "blocks",
+    "block_numbers",
+    "local_area_boundary",
+    "vtu",
+)
 
 
 def _load_config(path: str) -> dict[str, object]:
@@ -97,6 +104,16 @@ def parse_args() -> argparse.Namespace:
         help="Property addresses CSV (civic_number, std_street, geo_point_2d)",
     )
     ap.add_argument("--blocks", help="Block outlines CSV (with 'geom' GeoJSON column)")
+    ap.add_argument(
+        "--block-numbers",
+        dest="block_numbers",
+        help="Block-numbers CSV (Vancouver Open Data; label, geo_local_area, geom point)",
+    )
+    ap.add_argument(
+        "--local-area-boundary",
+        dest="local_area_boundary",
+        help="Local area (neighbourhood) boundary CSV (Vancouver Open Data; name, geom polygon)",
+    )
     ap.add_argument("--vtu", help="VTU members CSV (with address column)")
     ap.add_argument("--out", help=f"Output HTML (default: {DEFAULT_OUT})")
     ap.add_argument(

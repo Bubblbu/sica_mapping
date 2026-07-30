@@ -147,25 +147,6 @@
     color: #777;
   }
 
-  #filters-panel .filter-year {
-    display: flex;
-    flex-direction: column;
-    gap: 6px;
-    margin-top: 8px;
-  }
-
-  #filters-panel .filter-year-toggle {
-    font-size: 12px;
-    display: flex;
-    align-items: center;
-    gap: 6px;
-  }
-
-  #filters-panel .filter-year-value {
-    font-size: 12px;
-    color: #444;
-  }
-
   #filters-panel .filter-visual {
     display: flex;
     flex-direction: column;
@@ -196,6 +177,116 @@
     display: flex;
     flex-direction: column;
     gap: 10px;
+  }
+
+  /* Craigslist-style distribution sliders: a bin-count histogram sitting
+     directly above each metric's dual-handle range slider. */
+  #filters-panel .metric-control {
+    margin-bottom: 6px;
+  }
+
+  #filters-panel .metric-header {
+    font-size: 12px;
+    font-weight: 600;
+    color: #27354a;
+    margin-bottom: 4px;
+  }
+
+  #filters-panel .metric-histogram {
+    display: flex;
+    align-items: flex-end;
+    height: 36px;
+    gap: 1px;
+    margin-bottom: 2px;
+  }
+
+  #filters-panel .metric-hist-bar {
+    flex: 1 1 0;
+    min-width: 1px;
+    background: #9db4d8;
+    border-radius: 1px 1px 0 0;
+  }
+
+  #filters-panel .metric-hist-bar:hover {
+    background: #5b7fbd;
+  }
+
+  /* Two overlapping range inputs sharing one visual track. Chrome/Firefox
+     both auto-render a colored "fill" from the track start to the thumb on
+     native range inputs (accent-color) — with two inputs stacked on top of
+     each other, the later one's opaque fill buries the other's thumb
+     underneath it. Fix: fully disable native track/thumb rendering on both
+     (appearance: none) and draw one shared static line via ::before, so
+     there's nothing left for either slider to visually cover the other with
+     — only the two custom-styled thumb circles are ever painted. */
+  #filters-panel .metric-sliders {
+    position: relative;
+    height: 18px;
+  }
+
+  #filters-panel .metric-sliders::before {
+    content: "";
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: 50%;
+    height: 4px;
+    margin-top: -2px;
+    background: #cdd1dd;
+    border-radius: 2px;
+    pointer-events: none;
+  }
+
+  #filters-panel .metric-sliders input[type="range"] {
+    -webkit-appearance: none;
+    appearance: none;
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: 0;
+    height: 18px;
+    margin: 0;
+    background: transparent;
+    pointer-events: none;
+  }
+
+  #filters-panel .metric-sliders input[type="range"]::-webkit-slider-runnable-track {
+    -webkit-appearance: none;
+    background: transparent;
+  }
+
+  #filters-panel .metric-sliders input[type="range"]::-moz-range-track {
+    background: transparent;
+    border: none;
+  }
+
+  #filters-panel .metric-sliders input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    pointer-events: auto;
+    width: 14px;
+    height: 14px;
+    margin-top: 2px;
+    border-radius: 50%;
+    background: #2f5fb0;
+    cursor: pointer;
+  }
+
+  #filters-panel .metric-sliders input[type="range"]::-moz-range-thumb {
+    pointer-events: auto;
+    width: 14px;
+    height: 14px;
+    border: none;
+    border-radius: 50%;
+    background: #2f5fb0;
+    cursor: pointer;
+  }
+
+  #filters-panel .metric-values {
+    display: flex;
+    justify-content: space-between;
+    font-size: 11px;
+    color: #6b7280;
+    margin-top: 2px;
   }
 
   #filters-panel button#filter-reset {
@@ -247,24 +338,24 @@
       </table>
     </div>
     <div class="filter-section">
-      <h4>Visualization Options</h4>
+      <h4>General options / Map</h4>
       <div class="filter-visual">
-        <label><input type="checkbox" id="viz-color-vtu" checked> Color-scale VTU buildings (total units)</label>
-        <label><input type="checkbox" id="viz-hide-non"> Hide buildings w/o members</label>
-        <label><input type="checkbox" id="viz-show-blocks" checked> Show block outlines</label>
+        <label><input type="checkbox" id="viz-show-buildings" checked> Show buildings</label>
+        <label><input type="checkbox" id="viz-show-blocks" checked> Show blocks</label>
+        <label><input type="checkbox" id="viz-hide-empty-blocks"> Hide empty blocks</label>
         <label><input type="checkbox" id="viz-color-blocks" checked> Color-scale blocks (total units)</label>
+        <label><input type="checkbox" id="viz-show-neighbourhoods" checked> Show neighbourhoods</label>
       </div>
     </div>
-    <h3>Filters</h3>
     <div class="filter-section">
       <h4>Membership</h4>
-      <label><input type="checkbox" id="filter-require-member"> Require member tag</label>
-      <div class="filter-year">
-        <label class="filter-year-toggle"><input type="checkbox" id="filter-year-enabled"> Filter by membership year</label>
-        <input type="range" id="filter-updated-year" min="0" max="0" step="1" disabled>
-        <div class="filter-year-value" id="filter-updated-year-label">Year: Any</div>
+      <div class="filter-visual">
+        <label><input type="checkbox" id="viz-color-vtu" checked> Color-scale buildings w/ VTU members</label>
+        <label><input type="checkbox" id="filter-hide-non-members"> Hide buildings without VTU members</label>
       </div>
+      <div id="filter-membership-year-section" class="filter-building"></div>
     </div>
+    <h3>Filters</h3>
     <div class="filter-section">
       <h4>Neighbourhoods</h4>
       <div class="filter-tags" id="filter-neighbourhoods">
@@ -279,6 +370,7 @@
       <h4>Buildings</h4>
       <div id="filter-building-section" class="filter-building"></div>
     </div>
+    <button type="button" id="export-visible-csv">Export visible buildings (CSV)</button>
     <button type="button" id="filter-reset">Reset filters</button>
   </div>
 </div>

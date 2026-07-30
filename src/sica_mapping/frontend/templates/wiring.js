@@ -34,6 +34,7 @@
       const layerBlocks = window["$blocks_layer_var"] || null;
       const layerVTU = window["$layer_vtu_var"] || null;
       const layerNon = window["$layer_non_var"] || null;
+      const layerNeighbourhoods = window["$layer_neighbourhoods_var"] || null;
       const mapInstance = (layerBlocks && layerBlocks._map) || (layerVTU && layerVTU._map) || (layerNon && layerNon._map) || null;
 
       if (!layerBlocks || typeof layerBlocks.eachLayer !== 'function') {
@@ -44,7 +45,6 @@
       window.blockBuildingIndex = {};
       window.buildingIndex = {};
       window.ownerIndex = {};
-      window.membershipData = {};
       const BASE_ZOOM = 15;
       let currentZoomScale = 1;
       let colorScalingEnabled = true;
@@ -88,7 +88,10 @@
         layer._isFiltered = filtered;
         if (filtered) {
           layer._selectionRefs = 0;
-          layer.setStyle({ weight:1, color:'#d0d0d0', fillOpacity:0.08, fillColor:'#f5f5f5' });
+          // Fully hidden, matching setMarkerVisibility()'s treatment of filtered
+          // buildings (weight:0/fillOpacity:0) rather than just dimming to a
+          // faint grey outline.
+          layer.setStyle({ weight:0, color:null, fillOpacity:0, fillColor:'#f5f5f5' });
         } else {
           resetBlockStyle(layer);
         }
@@ -284,7 +287,6 @@
           marker._selectionRefs = 0;
           marker._isFiltered = false;
           marker._isVtu = !!meta.is_vtu;
-          marker._passesMembership = true;
           const memberCount = Number(meta.member_count);
           marker._memberCount = Number.isFinite(memberCount) ? memberCount : 0;
           if (!marker.options) marker.options = {};
@@ -293,9 +295,6 @@
           marker._units = Number.isFinite(unitsMeta) ? unitsMeta : 0;
           ensureMarkerBase(marker);
           updateMarkerColorAppearance(marker);
-
-          var payload = Array.isArray(meta.members_payload) ? meta.members_payload : [];
-          window.membershipData[key] = payload;
 
           var ownerKey = meta.owner_key;
           if (ownerKey) {
@@ -313,30 +312,6 @@
             }
           }
         });
-      }
-
-      function matchesFilters(records, opts) {
-        const hasRecords = Array.isArray(records) && records.length > 0;
-        if (!opts.requireMember && opts.minYear === null) {
-          return true;
-        }
-        if (!hasRecords) {
-          return false;
-        }
-        let filtered = records.slice();
-        if (opts.requireMember) {
-          filtered = filtered.filter(function(r) { return r.has_member_tag; });
-        }
-        if (opts.minYear !== null) {
-          const yearThreshold = Number(opts.minYear);
-          filtered = filtered.filter(function(r) {
-            const yr = r.latest_membership_year;
-            if (yr === undefined || yr === null) return false;
-            const parsed = Number(yr);
-            return Number.isFinite(parsed) && parsed >= yearThreshold;
-          });
-        }
-        return filtered.length > 0;
       }
 
       function toggleLayerVisibility(layer, show) {
@@ -476,29 +451,47 @@
       window.blockColorMax = blockColorMax;
       blockLayers.forEach(function(layer) { resetBlockStyle(layer); });
 
+      // Blocks and building markers share one canvas renderer (prefer_canvas=True
+      // on the map, neither layer sets a custom pane/renderer), so paint order is
+      // just insertion order into that shared canvas — not tied to which was added
+      // to the map first. Toggling a layer off/on re-inserts it at the end (drawn
+      // on top), so re-showing blocks after hiding them can push them in front of
+      // buildings. Pin blocks behind buildings every time blocks become visible.
+      function sendBlocksToBack() {
+        blockLayers.forEach(function(layer) {
+          if (layer && typeof layer.bringToBack === 'function') layer.bringToBack();
+        });
+      }
+      sendBlocksToBack();
+
       applyMarkerMetadata();
       const markerCount = Object.keys(window.buildingIndex).length;
       if (!markerCount) {
         throw new Error('Building markers not ready');
       }
       applyZoomScaling();
+      // Toggling a FeatureGroup/GeoJSON layer on/off (e.g. "Show buildings",
+      // "Show blocks") fires 'layeradd'/'layerremove' on the map once PER CHILD
+      // layer — thousands of times for ~5,000 building markers or ~4,600 block
+      // features — not once for the group. Running updateMapStatus()/
+      // applyZoomScaling() (each an O(buildings) scan) synchronously on every one
+      // of those events is what froze the page on toggle. Coalesce to at most
+      // once per animation frame, same pattern as scheduleApplyFilters() below.
+      let mapStatusScheduled = false;
+      function scheduleMapStatusUpdate() {
+        if (mapStatusScheduled) return;
+        mapStatusScheduled = true;
+        window.requestAnimationFrame(function() {
+          mapStatusScheduled = false;
+          updateMapStatus();
+          applyZoomScaling();
+        });
+      }
       if (mapInstance && typeof mapInstance.on === 'function') {
-        mapInstance.on('moveend', function() {
-          updateMapStatus();
-          applyZoomScaling();
-        });
-        mapInstance.on('zoomend', function() {
-          updateMapStatus();
-          applyZoomScaling();
-        });
-        mapInstance.on('layeradd', function() {
-          updateMapStatus();
-          applyZoomScaling();
-        });
-        mapInstance.on('layerremove', function() {
-          updateMapStatus();
-          applyZoomScaling();
-        });
+        mapInstance.on('moveend', scheduleMapStatusUpdate);
+        mapInstance.on('zoomend', scheduleMapStatusUpdate);
+        mapInstance.on('layeradd', scheduleMapStatusUpdate);
+        mapInstance.on('layerremove', scheduleMapStatusUpdate);
       }
       if (mapInstance && typeof mapInstance.invalidateSize === 'function') {
         setTimeout(function() {
@@ -553,10 +546,7 @@
         row.addEventListener('mouseleave', function() { ownerHover(key, false); });
       });
 
-      const requireMemberChk = document.getElementById('filter-require-member');
-      const yearToggle = document.getElementById('filter-year-enabled');
-      const yearSlider = document.getElementById('filter-updated-year');
-      const yearLabel = document.getElementById('filter-updated-year-label');
+      const hideNonMembersChk = document.getElementById('filter-hide-non-members');
       const hoodInputs = Array.from(document.querySelectorAll('.filter-neighbourhood-option'));
 
       // Cached once: applyFilters() runs on every slider tick, so re-querying the DOM
@@ -579,8 +569,10 @@
       const resetBtn = document.getElementById('filter-reset');
       const colorScaleChk = document.getElementById('viz-color-vtu');
       const colorBlocksChk = document.getElementById('viz-color-blocks');
-      const hideNonChk = document.getElementById('viz-hide-non');
+      const showBuildingsChk = document.getElementById('viz-show-buildings');
       const vizBlocksChk = document.getElementById('viz-show-blocks');
+      const hideEmptyBlocksChk = document.getElementById('viz-hide-empty-blocks');
+      const vizNeighbourhoodsChk = document.getElementById('viz-show-neighbourhoods');
       const tableSearchInput = null;
       const statusCells = {
         total: {
@@ -607,22 +599,11 @@
       const metricControls = {};
       let metricKeys = [];
 
-      const yearRangeMin = (filterConfig && typeof filterConfig.updated_year_min === 'number') ? filterConfig.updated_year_min : null;
-      const yearRangeMax = (filterConfig && typeof filterConfig.updated_year_max === 'number') ? filterConfig.updated_year_max : null;
       const datasetTotals = (filterConfig && filterConfig.dataset_totals) || null;
       const totalBuildings = datasetTotals && typeof datasetTotals.buildings === 'number' ? datasetTotals.buildings : null;
       const totalMembers = datasetTotals && typeof datasetTotals.members === 'number' ? datasetTotals.members : null;
       const totalUnits = datasetTotals && typeof datasetTotals.units === 'number' ? datasetTotals.units : null;
       const totalVtuBuildings = datasetTotals && typeof datasetTotals.vtu_buildings === 'number' ? datasetTotals.vtu_buildings : null;
-
-      function updateYearLabel() {
-        if (!yearLabel) return;
-        if (!yearSlider || !yearToggle || !yearToggle.checked) {
-          yearLabel.textContent = 'Year: Any';
-        } else {
-          yearLabel.textContent = 'Year: ' + yearSlider.value;
-        }
-      }
 
       function setStatusCell(cell, value) {
         if (!cell) return;
@@ -687,44 +668,6 @@
         setStatusCell(statusCells.view.members, summary.members);
       }
 
-      function syncYearSliderState() {
-        if (!yearSlider) return;
-        const enabled = !!(yearToggle && yearToggle.checked);
-        yearSlider.disabled = !enabled;
-        if (enabled && yearRangeMin !== null && yearRangeMax !== null) {
-          if (!yearSlider.value || Number.isNaN(Number(yearSlider.value))) {
-            yearSlider.value = String(yearRangeMin);
-          }
-        }
-        updateYearLabel();
-      }
-
-      function initializeYearControl() {
-        if (!yearSlider) {
-          return;
-        }
-        if (yearRangeMin === null || yearRangeMax === null || yearRangeMin > yearRangeMax) {
-          yearSlider.disabled = true;
-          if (yearToggle) {
-            yearToggle.checked = false;
-            yearToggle.disabled = true;
-          }
-          updateYearLabel();
-          return;
-        }
-        yearSlider.min = String(yearRangeMin);
-        yearSlider.max = String(yearRangeMax);
-        yearSlider.step = 1;
-        if (!yearSlider.value) {
-          yearSlider.value = String(yearRangeMin);
-        }
-        if (yearToggle) {
-          yearToggle.checked = false;
-        }
-        yearSlider.disabled = true;
-        updateYearLabel();
-      }
-
       function updateSummaryBar() {
         if (!summaryLabelEl || !summaryUnitsEl || !summaryMembersEl || !summaryRowsEl) return;
         const allRows = buildingRows;
@@ -757,7 +700,8 @@
 
       function updateLegendVisibility() {
         const blocksVisible = vizBlocksChk ? vizBlocksChk.checked !== false : true;
-        const showBuildingLegend = colorScaleChk ? colorScaleChk.checked !== false : true;
+        const buildingsVisible = showBuildingsChk ? showBuildingsChk.checked !== false : true;
+        const showBuildingLegend = buildingsVisible && (colorScaleChk ? colorScaleChk.checked !== false : true);
         const showBlocksLegend = blocksVisible && blockColorScalingEnabled;
         if (legendContainerEl) {
           const sidebarEl = document.getElementById('sidebar-container');
@@ -777,10 +721,7 @@
       function updateMarkerColorAppearance(marker) {
         if (!marker) return;
         ensureMarkerBase(marker);
-        if (marker._passesMembership === undefined) {
-          marker._passesMembership = true;
-        }
-        const shouldColorize = colorScalingEnabled && marker._isVtu && marker._passesMembership;
+        const shouldColorize = colorScalingEnabled && marker._isVtu;
         const coloredColor = marker._colorizedColor || marker._baseColor || '#9e9e9e';
         const neutralColor = marker._neutralColor || '#9e9e9e';
         const targetColor = shouldColorize ? coloredColor : neutralColor;
@@ -1044,18 +985,13 @@
         };
       }
 
-      function buildMetricControls() {
-        const container = document.getElementById('filter-building-section');
-        Object.keys(metricControls).forEach(function(key) { delete metricControls[key]; });
-        metricKeys = [];
-        if (!container || !filterConfig.building_metrics) {
-          return;
-        }
-        container.innerHTML = '';
-        const order = filterConfig.building_metric_order || Object.keys(filterConfig.building_metrics);
-        order.forEach(function(metric) {
-          const summary = filterConfig.building_metrics[metric];
-          if (!summary) return;
+      // Renders one Craigslist-style histogram + dual-handle range slider control
+      // into `container` and returns its bookkeeping object for metricControls[metric].
+      // Shared by the Buildings section's metrics and the Membership section's
+      // membership-year metric — same look and threshold-filtering behavior,
+      // just rendered into different containers so they show up in different
+      // parts of the sidebar.
+      function renderMetricControl(container, metric, summary) {
           const control = document.createElement('div');
           control.className = 'metric-control';
 
@@ -1157,7 +1093,7 @@
 
           container.appendChild(control);
 
-          metricControls[metric] = {
+          const ctrl = {
             summary: summary,
             minSlider: minSlider,
             maxSlider: maxSlider,
@@ -1173,14 +1109,37 @@
 
           minSlider.addEventListener('input', makeSliderHandler(metric, 'min'));
           maxSlider.addEventListener('input', makeSliderHandler(metric, 'max'));
-        });
+          return ctrl;
+      }
+
+      function buildMetricControls() {
+        Object.keys(metricControls).forEach(function(key) { delete metricControls[key]; });
+        metricKeys = [];
+
+        const buildingContainer = document.getElementById('filter-building-section');
+        if (buildingContainer && filterConfig.building_metrics) {
+          buildingContainer.innerHTML = '';
+          const order = filterConfig.building_metric_order || Object.keys(filterConfig.building_metrics);
+          order.forEach(function(metric) {
+            const summary = filterConfig.building_metrics[metric];
+            if (!summary) return;
+            metricControls[metric] = renderMetricControl(buildingContainer, metric, summary);
+          });
+        }
+
+        const membershipContainer = document.getElementById('filter-membership-year-section');
+        if (membershipContainer && filterConfig.membership_year_metric) {
+          membershipContainer.innerHTML = '';
+          metricControls['latest_membership_year'] = renderMetricControl(
+            membershipContainer, 'latest_membership_year', filterConfig.membership_year_metric
+          );
+        }
+
         metricKeys = Object.keys(metricControls);
         metricKeys.forEach(updateMetricLabels);
       }
 
-      initializeYearControl();
       buildMetricControls();
-      syncYearSliderState();
       updateDatasetStatus();
       updateLegendVisibility();
 
@@ -1206,27 +1165,19 @@
             summary: summary,
           };
         });
-        const opts = {
-          requireMember: requireMemberChk ? requireMemberChk.checked : false,
-          minYear: (yearToggle && yearToggle.checked && yearSlider) ? Number.parseInt(yearSlider.value, 10) : null,
-        };
-        if (opts.minYear !== null && Number.isNaN(opts.minYear)) {
-          opts.minYear = null;
-        }
+        const hideNonMembers = hideNonMembersChk ? hideNonMembersChk.checked : false;
         const visibleBids = new Set();
         buildingRows.forEach(function(row) {
           const bid = row.getAttribute('data-bid');
           const marker = window.buildingIndex[bid];
-          const records = window.membershipData[bid] || [];
-          const membershipMatch = matchesFilters(records, opts);
-          if (marker) {
-            marker._passesMembership = membershipMatch;
-          }
 
           let matches = true;
+          if (hideNonMembers) {
+            matches = row.getAttribute('data-has-vtu-member') === '1';
+          }
           const rowArea = (row.getAttribute('data-area') || '').toLowerCase().trim();
           if (restrictHoods) {
-            matches = selectedHoods.includes(rowArea);
+            matches = matches && selectedHoods.includes(rowArea);
           } else if (hideWhenNone) {
             matches = false;
           }
@@ -1271,21 +1222,39 @@
           }
         });
 
-        Object.keys(window.blockBuildingIndex).forEach(function(blockId) {
+        const hideEmptyBlocks = hideEmptyBlocksChk ? hideEmptyBlocksChk.checked : false;
+        Object.keys(window.blocksIndex).forEach(function(blockId) {
           var ids = window.blockBuildingIndex[blockId] || [];
-          var hasVisible = ids.some(function(id) { return visibleBids.has(String(id)); });
+          var isEmpty = ids.length === 0;
           var row = blockRowById[blockId];
+          var shouldHide;
+          if (isEmpty) {
+            // Empty blocks have no buildings to derive visibility from, so the
+            // neighbourhood filter has to be checked against the block's own
+            // local_area (data-area) directly, not via visibleBids.
+            var blockArea = row ? (row.getAttribute('data-area') || '').toLowerCase().trim() : '';
+            var hoodMatch = true;
+            if (restrictHoods) {
+              hoodMatch = selectedHoods.includes(blockArea);
+            } else if (hideWhenNone) {
+              hoodMatch = false;
+            }
+            shouldHide = hideEmptyBlocks || !hoodMatch;
+          } else {
+            var hasVisible = ids.some(function(id) { return visibleBids.has(String(id)); });
+            shouldHide = !hasVisible;
+          }
           var layer = window.blocksIndex[blockId];
           if (row) {
-            row.classList.toggle('hidden', !hasVisible);
+            row.classList.toggle('hidden', shouldHide);
             const checkbox = row.__checkbox;
-            if (!hasVisible && checkbox && checkbox.checked) {
+            if (shouldHide && checkbox && checkbox.checked) {
               checkbox.checked = false;
               if (layer) layer._selectionRefs = 0;
               setBlockSelectionMarkers(blockId, false);
             }
           }
-          setBlockFiltered(blockId, !hasVisible);
+          setBlockFiltered(blockId, shouldHide);
         });
 
         // Was a per-row `document.querySelector('...:not(.hidden)')` CSS scan over all
@@ -1310,17 +1279,8 @@
         updateSummaryBar();
       }
 
-      if (requireMemberChk) requireMemberChk.addEventListener('change', applyFilters);
-      if (yearToggle) yearToggle.addEventListener('change', function() {
-        syncYearSliderState();
-        applyFilters();
-      });
-      if (yearSlider) yearSlider.addEventListener('input', function() {
-        updateYearLabel();
-        if (yearToggle && yearToggle.checked) {
-          scheduleApplyFilters();
-        }
-      });
+      if (hideNonMembersChk) hideNonMembersChk.addEventListener('change', applyFilters);
+      if (hideEmptyBlocksChk) hideEmptyBlocksChk.addEventListener('change', applyFilters);
       hoodInputs.forEach(function(inp) { inp.addEventListener('change', applyFilters); });
 
       if (hoodSelectAllBtn) {
@@ -1340,7 +1300,18 @@
 
       initPaneResize();
 
-      toggleLayerVisibility(layerVTU, true);
+      if (showBuildingsChk) {
+        toggleLayerVisibility(layerVTU, showBuildingsChk.checked !== false);
+        toggleLayerVisibility(layerNon, showBuildingsChk.checked !== false);
+        showBuildingsChk.addEventListener('change', function() {
+          toggleLayerVisibility(layerVTU, showBuildingsChk.checked !== false);
+          toggleLayerVisibility(layerNon, showBuildingsChk.checked !== false);
+          updateLegendVisibility();
+        });
+      } else {
+        toggleLayerVisibility(layerVTU, true);
+        toggleLayerVisibility(layerNon, true);
+      }
       if (colorScaleChk) {
         applyVtuColorScaling(colorScaleChk.checked !== false);
         colorScaleChk.addEventListener('change', function() {
@@ -1357,33 +1328,29 @@
       } else {
         applyBlockColorScaling(true);
       }
-      if (hideNonChk) {
-        toggleLayerVisibility(layerNon, !hideNonChk.checked);
-        hideNonChk.addEventListener('change', function() {
-          toggleLayerVisibility(layerNon, !hideNonChk.checked);
-          updateMapStatus();
-        });
-      } else {
-        toggleLayerVisibility(layerNon, true);
-      }
       if (vizBlocksChk) {
         toggleLayerVisibility(layerBlocks, vizBlocksChk.checked !== false);
         vizBlocksChk.addEventListener('change', function() {
           toggleLayerVisibility(layerBlocks, vizBlocksChk.checked);
+          if (vizBlocksChk.checked) sendBlocksToBack();
           updateLegendVisibility();
         });
       } else {
         toggleLayerVisibility(layerBlocks, true);
       }
+      if (vizNeighbourhoodsChk) {
+        toggleLayerVisibility(layerNeighbourhoods, vizNeighbourhoodsChk.checked !== false);
+        vizNeighbourhoodsChk.addEventListener('change', function() {
+          toggleLayerVisibility(layerNeighbourhoods, vizNeighbourhoodsChk.checked);
+        });
+      } else {
+        toggleLayerVisibility(layerNeighbourhoods, true);
+      }
 
       if (resetBtn) {
         resetBtn.addEventListener('click', function() {
-          if (requireMemberChk) requireMemberChk.checked = false;
-          if (yearToggle) yearToggle.checked = false;
-          if (yearSlider) {
-            yearSlider.value = yearRangeMin !== null ? String(yearRangeMin) : yearSlider.value;
-          }
-          syncYearSliderState();
+          if (hideNonMembersChk) hideNonMembersChk.checked = false;
+          if (hideEmptyBlocksChk) hideEmptyBlocksChk.checked = false;
           hoodInputs.forEach(function(inp) { inp.checked = true; });
           if (colorScaleChk) {
             colorScaleChk.checked = true;
@@ -1393,13 +1360,19 @@
             colorBlocksChk.checked = true;
             applyBlockColorScaling(true);
           }
-          if (hideNonChk) {
-            hideNonChk.checked = false;
+          if (showBuildingsChk) {
+            showBuildingsChk.checked = true;
+            toggleLayerVisibility(layerVTU, true);
             toggleLayerVisibility(layerNon, true);
           }
           if (vizBlocksChk) {
             vizBlocksChk.checked = true;
             toggleLayerVisibility(layerBlocks, true);
+            sendBlocksToBack();
+          }
+          if (vizNeighbourhoodsChk) {
+            vizNeighbourhoodsChk.checked = true;
+            toggleLayerVisibility(layerNeighbourhoods, true);
           }
           if (tableSearchInput) {
             tableSearchInput.value = '';
@@ -1420,6 +1393,56 @@
           applyFilters();
           updateLegendVisibility();
         });
+      }
+
+      // "Currently visible" matches exactly what computeMapSummary() already counts
+      // for the sidebar's "In view" stats row: passes the active filters, on the map
+      // layer, and within the current pan/zoom bounds — not just the filter state.
+      function collectVisibleBuildingIds() {
+        const ids = [];
+        if (!mapInstance || typeof mapInstance.getBounds !== 'function') return ids;
+        const bounds = mapInstance.getBounds();
+        Object.keys(window.buildingIndex).forEach(function(key) {
+          const marker = window.buildingIndex[key];
+          if (!marker || marker._isFiltered) return;
+          if (typeof mapInstance.hasLayer === 'function' && !mapInstance.hasLayer(marker)) return;
+          if (typeof marker.getLatLng !== 'function') return;
+          const latLng = marker.getLatLng();
+          if (!latLng || typeof bounds.contains !== 'function' || !bounds.contains(latLng)) return;
+          ids.push(key);
+        });
+        return ids;
+      }
+
+      function exportVisibleBuildingsCsv() {
+        const ids = collectVisibleBuildingIds();
+        if (!ids.length) {
+          window.alert('No buildings are currently visible to export.');
+          return;
+        }
+        const columns = buildingColumnOrder.length
+          ? buildingColumnOrder
+          : Object.keys(buildingRecords[ids[0]] || {});
+        const lines = [columns.map(escapeCSV).join(',')];
+        ids.forEach(function(id) {
+          const record = buildingRecords[id] || {};
+          lines.push(columns.map(function(col) { return escapeCSV(record[col]); }).join(','));
+        });
+        const blob = new Blob([lines.join('\r\n')], { type: 'text/csv;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        const timestamp = new Date().toISOString().slice(0, 19).replace(/[:T]/g, '-');
+        link.href = url;
+        link.download = 'buildings-visible-' + timestamp + '.csv';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
+      }
+
+      const exportVisibleBtn = document.getElementById('export-visible-csv');
+      if (exportVisibleBtn) {
+        exportVisibleBtn.addEventListener('click', exportVisibleBuildingsCsv);
       }
 
       metricKeys.forEach(updateMetricLabels);

@@ -7,6 +7,8 @@ from string import Template
 import folium
 import numpy as np
 import pandas as pd
+from shapely.geometry import shape
+
 from .colors import greens_color, plasma_color
 
 
@@ -63,7 +65,7 @@ def add_blocks_layer(m: folium.Map, feature_collection: dict) -> folium.GeoJson:
     if feature_collection.get("features"):
         popup = folium.GeoJsonPopup(
             fields=[
-                "block_id",
+                "block_label",
                 "buildings",
                 "total_units",
                 "median_year_built",
@@ -88,6 +90,45 @@ def add_blocks_layer(m: folium.Map, feature_collection: dict) -> folium.GeoJson:
     )
     g.add_to(m)
     return g
+
+
+def _neighbourhood_style(feat):
+    return {
+        "color": "#ff8c00",
+        "weight": 2,
+        "opacity": 0.9,
+        "fill": False,
+    }
+
+
+def add_neighbourhoods_layer(m: folium.Map, feature_collection: dict) -> folium.FeatureGroup:
+    """Vancouver's 22 local-area boundaries — a static reference overlay (name
+    + outline only, no data join). Boundary lines and name labels both in
+    orange, grouped into one togglable layer.
+    """
+    layer = folium.FeatureGroup(
+        name="Neighbourhoods (orange boundaries)", show=True, overlay=True
+    )
+    for feat in feature_collection.get("features") or []:
+        props = feat.get("properties") or {}
+        name = str(props.get("name", ""))
+        folium.GeoJson(data=feat, style_function=_neighbourhood_style).add_to(layer)
+        geom = shape(feat["geometry"])
+        centroid = geom.centroid
+        folium.Marker(
+            location=[centroid.y, centroid.x],
+            icon=folium.DivIcon(
+                html=(
+                    '<div style="color:#ff8c00;font-weight:700;font-size:12px;'
+                    "text-shadow:-1px -1px 0 #fff,1px -1px 0 #fff,-1px 1px 0 #fff,"
+                    '1px 1px 0 #fff;white-space:nowrap;pointer-events:none;">'
+                    f"{escape(name)}</div>"
+                ),
+                icon_size=(0, 0),
+            ),
+        ).add_to(layer)
+    layer.add_to(m)
+    return layer
 
 
 def marker_radius(units) -> float:
@@ -189,6 +230,7 @@ def wiring_js(
     blocks_layer_var: str,
     layer_vtu_var: str,
     layer_non_var: str,
+    layer_neighbourhoods_var: str,
     filter_config_url: str,
     marker_metadata_url: str,
     building_records_url: str,
@@ -197,6 +239,7 @@ def wiring_js(
         blocks_layer_var=blocks_layer_var,
         layer_vtu_var=layer_vtu_var,
         layer_non_var=layer_non_var,
+        layer_neighbourhoods_var=layer_neighbourhoods_var,
         filter_config_url=filter_config_url,
         marker_metadata_url=marker_metadata_url,
         building_records_url=building_records_url,
