@@ -46,7 +46,11 @@
       window.buildingIndex = {};
       window.ownerIndex = {};
       window.hoodIndex = {};
-      const BASE_ZOOM = 15;
+      const BASE_ZOOM = 14;
+      // Thin light stroke so overlapping markers read as distinct dots instead
+      // of blurring into solid blobs at dense blocks (option 1).
+      const MARKER_STROKE_COLOR = '#ffffff';
+      const MARKER_STROKE_WEIGHT = 0.6;
       let currentZoomScale = 1;
       let colorScalingEnabled = true;
       let blockColorScalingEnabled = true;
@@ -67,17 +71,22 @@
         if (!layer) return;
         const rawUnits = Number(layer._blockUnits);
         const units = Number.isFinite(rawUnits) ? rawUnits : 0;
+        const buildingCount = Number(layer._blockBuildings) || 0;
         let base;
-        if (!blockColorScalingEnabled || blockColorMax <= 0) {
+        if (buildingCount <= 0) {
+          // Empty blocks (no buildings) carry no meaningful data — leave them
+          // transparent rather than painting them into the color scale.
+          base = { weight:1, color:'#b8b8b8', fillOpacity:0, fillColor:'transparent' };
+        } else if (!blockColorScalingEnabled || blockColorMax <= 0) {
           base = { weight:1, color:'#b8b8b8', fillOpacity:0.35, fillColor:'#f0f0f0' };
         } else {
           const ratio = Math.max(0, Math.min(1, units / blockColorMax));
-          const fill = (ratio <= 0.10) ? '#f7fcf5' :
-                       (ratio <= 0.25) ? '#e5f5e0' :
-                       (ratio <= 0.50) ? '#c7e9c0' :
-                       (ratio <= 0.75) ? '#74c476' :
-                       (ratio <  1.00) ? '#31a354' : '#006d2c';
-          base = { weight:1, color:'#b8b8b8', fillOpacity:0.55, fillColor:fill };
+          const fill = (ratio <= 0.10) ? '#c7e9c0' :
+                       (ratio <= 0.25) ? '#a1d99b' :
+                       (ratio <= 0.50) ? '#74c476' :
+                       (ratio <= 0.75) ? '#41ab5d' :
+                       (ratio <  1.00) ? '#238b45' : '#005a32';
+          base = { weight:1, color:'#b8b8b8', fillOpacity:0.7, fillColor:fill };
         }
         layer._baseStyle = base;
         layer.setStyle(base);
@@ -86,6 +95,10 @@
       function setBlockFiltered(blockId, filtered) {
         var layer = window.blocksIndex[blockId];
         if (!layer) return;
+        // Called for every one of ~4,600 blocks on every filter tick; skip the
+        // setStyle work when the filtered state isn't actually changing (same
+        // reasoning as setMarkerVisibility above).
+        if (layer._isFiltered === filtered) return;
         layer._isFiltered = filtered;
         if (filtered) {
           layer._selectionRefs = 0;
@@ -157,8 +170,8 @@
             fillOpacity: Math.min(0.95, baseOpacity + 0.20),
             fillColor: baseColor
           } : {
-            weight:0,
-            color:null,
+            weight: MARKER_STROKE_WEIGHT,
+            color: MARKER_STROKE_COLOR,
             fillOpacity: baseOpacity,
             fillColor: baseColor
           });
@@ -193,6 +206,12 @@
       function setMarkerVisibility(marker, visible) {
         if (!marker) return;
         ensureMarkerBase(marker);
+        // Called for every one of ~5,000 buildings on every filter/slider tick;
+        // most buildings' visibility doesn't flip on a given tick, so skip the
+        // setStyle/setRadius work (real canvas redraw cost) entirely when the
+        // state isn't actually changing — this was the main source of slider-
+        // drag jank.
+        if (marker._isFiltered === !visible) return;
         marker._isFiltered = !visible;
         if (!visible) {
           marker._selectionRefs = 0;
@@ -207,8 +226,8 @@
           var baseRadius = getScaledRadius(marker);
           if (typeof marker.setStyle === 'function') {
             marker.setStyle({
-              weight:0,
-              color:null,
+              weight: MARKER_STROKE_WEIGHT,
+              color: MARKER_STROKE_COLOR,
               fillOpacity: baseOpacity,
               fillColor: marker._baseColor
             });
@@ -301,6 +320,8 @@
           marker.options.base_color = marker._baseColor;
           const unitsMeta = Number(meta.units);
           marker._units = Number.isFinite(unitsMeta) ? unitsMeta : 0;
+          const yearMeta = Number(meta.year_built);
+          marker._yearBuilt = Number.isFinite(yearMeta) ? yearMeta : null;
           ensureMarkerBase(marker);
           updateMarkerColorAppearance(marker);
 
@@ -402,6 +423,7 @@
           setHoodSelection(key.toLowerCase().trim(), cb.checked);
         }
         updateSummaryBar();
+        updateGroupTableSummaries();
       }
 
       function getSortValue(row, index, type) {
@@ -470,6 +492,8 @@
           var unitTotal = Number(props.total_units);
           if (!Number.isFinite(unitTotal)) unitTotal = 0;
           layer._blockUnits = unitTotal;
+          var buildingCount = Number(props.buildings);
+          layer._blockBuildings = Number.isFinite(buildingCount) ? buildingCount : 0;
           blockLayers.push(layer);
         }
       });
@@ -586,7 +610,6 @@
         row.addEventListener('mouseleave', function() { neighbourhoodHover(hoodKey, false); });
       });
 
-      const hideNonMembersChk = document.getElementById('filter-hide-non-members');
       const hoodInputs = Array.from(document.querySelectorAll('.filter-neighbourhood-option'));
 
       // Cached once: applyFilters() runs on every slider tick, so re-querying the DOM
@@ -596,14 +619,30 @@
       const buildingRows = Array.from(document.querySelectorAll('#buildings-table tbody tr'));
       buildingRows.forEach(function(row) { row.__checkbox = row.querySelector('.row-select'); });
 
+      // Column indices of the aggregate cells that get recomputed live from
+      // currently-visible buildings on every applyFilters() pass (see
+      // updateGroupRowValues below) — must match the <thead> order in sidebar.html.
+      function cacheRowCells(rows, colMap) {
+        rows.forEach(function(row) {
+          row.__cells = {};
+          Object.keys(colMap).forEach(function(key) {
+            row.__cells[key] = row.children[colMap[key]] || null;
+          });
+        });
+      }
+
       const landlordRows = Array.from(document.querySelectorAll('#landlords-table tbody tr'));
       landlordRows.forEach(function(row) { row.__checkbox = row.querySelector('.row-select'); });
+      cacheRowCells(landlordRows, { bldgs: 2, units: 3, avg: 4, vtu: 5 });
 
       const neighbourhoodRows = Array.from(document.querySelectorAll('#neighbourhoods-table tbody tr'));
       neighbourhoodRows.forEach(function(row) { row.__checkbox = row.querySelector('.row-select'); });
+      cacheRowCells(neighbourhoodRows, { bldgs: 2, units: 3, avg: 4, vtu: 5 });
 
       const blockRowById = {};
-      Array.from(document.querySelectorAll('#blocks-table tbody tr')).forEach(function(row) {
+      const blockRows = Array.from(document.querySelectorAll('#blocks-table tbody tr'));
+      cacheRowCells(blockRows, { bldgs: 2, units: 3, avg: 4, year: 5, vtu: 6 });
+      blockRows.forEach(function(row) {
         row.__checkbox = row.querySelector('.row-select');
         blockRowById[row.getAttribute('data-block')] = row;
       });
@@ -616,7 +655,7 @@
       const vizBlocksChk = document.getElementById('viz-show-blocks');
       const hideEmptyBlocksChk = document.getElementById('viz-hide-empty-blocks');
       const vizNeighbourhoodsChk = document.getElementById('viz-show-neighbourhoods');
-      const tableSearchInput = null;
+      const tableSearchInput = document.getElementById('owner-search');
       const statusCells = {
         total: {
           units: document.getElementById('status-total-units'),
@@ -736,6 +775,132 @@
         summaryRowsEl.textContent = (targetRows.length || 0).toLocaleString() + (targetRows.length === 1 ? ' row' : ' rows');
       }
 
+      // Recomputes one Blocks/Landlords/Neighbourhoods row's Bldgs/Units/Avg/VTU
+      // (and, for blocks, Median year) cells from only the buildings currently
+      // passing the active filters — the row's own columns were previously baked
+      // in at build time from the full dataset and never changed when a filter
+      // (e.g. the unit-size slider) hid some of its buildings.
+      // `items` is either an array of markers (landlords/neighbourhoods, via
+      // window.ownerIndex/hoodIndex) or an array of building-id strings
+      // (blocks, via window.blockBuildingIndex) — `resolveMarker` resolves the
+      // latter without allocating an intermediate array on every call.
+      // `includeYear` skips the years array/sort entirely for landlord and
+      // neighbourhood rows, which never display a median-year column — with
+      // ~1,500 landlord rows re-evaluated per slider-drag frame, that sort was
+      // pure waste for a value nothing ever reads.
+      function computeLiveGroupMetrics(items, resolveMarker, includeYear) {
+        let bldgs = 0;
+        let units = 0;
+        let vtu = 0;
+        const years = includeYear ? [] : null;
+        items.forEach(function(item) {
+          const marker = resolveMarker ? resolveMarker(item) : item;
+          if (!marker || marker._isFiltered) return;
+          bldgs += 1;
+          const u = Number(marker._units);
+          if (Number.isFinite(u)) units += u;
+          if (marker._isVtu) vtu += 1;
+          if (includeYear && marker._yearBuilt !== null && marker._yearBuilt !== undefined) {
+            years.push(marker._yearBuilt);
+          }
+        });
+        let medianYear = null;
+        if (includeYear && years.length) {
+          years.sort(function(a, b) { return a - b; });
+          const mid = Math.floor(years.length / 2);
+          medianYear = years.length % 2 ? years[mid] : Math.round((years[mid - 1] + years[mid]) / 2);
+        }
+        return { bldgs: bldgs, units: units, vtu: vtu, avg: bldgs > 0 ? units / bldgs : 0, medianYear: medianYear };
+      }
+
+      function setCellValue(cell, sortValue, text) {
+        if (!cell) return;
+        cell.setAttribute('data-sort-value', String(sortValue));
+        cell.textContent = text;
+      }
+
+      // Skips all DOM writes when nothing actually changed since the last call —
+      // during a slider drag, most blocks/landlords/neighbourhoods are unaffected
+      // by a given threshold nudge, and writing textContent/attributes on ~6,000
+      // rows every animation frame (whether or not the numbers moved) was the
+      // main cause of the drag feeling sluggish.
+      function updateGroupRowValues(row, items, resolveMarker) {
+        if (!row || !row.__cells) return;
+        const includeYear = !!row.__cells.year;
+        const m = computeLiveGroupMetrics(items, resolveMarker, includeYear);
+        const prev = row.__lastMetrics;
+        if (prev && prev.bldgs === m.bldgs && prev.units === m.units && prev.vtu === m.vtu && prev.medianYear === m.medianYear) {
+          return;
+        }
+        row.__lastMetrics = m;
+        setCellValue(row.__cells.bldgs, m.bldgs, m.bldgs.toLocaleString());
+        setCellValue(row.__cells.units, m.units, m.units.toLocaleString());
+        setCellValue(row.__cells.avg, m.avg, m.avg.toFixed(1));
+        setCellValue(row.__cells.vtu, m.vtu, m.vtu.toLocaleString());
+        if (includeYear) {
+          setCellValue(row.__cells.year, m.medianYear === null ? '' : m.medianYear, m.medianYear === null ? '' : String(m.medianYear));
+        }
+        // Keep the row's own data attributes in sync too, since
+        // updateGroupTableSummary()'s footer totals sum from these.
+        row.setAttribute('data-bldgs', String(m.bldgs));
+        row.setAttribute('data-units', String(m.units));
+        row.setAttribute('data-vtu-bldgs', String(m.vtu));
+      }
+
+      // Shared footer-summary logic for the Blocks/Landlords/Neighbourhoods tabs,
+      // which all use the same Bldgs/Units/Avg Units per Bldg/VTU bldgs column
+      // shape (unlike Buildings, whose footer tracks Units/Members per building
+      // row rather than a per-group aggregate).
+      function updateGroupTableSummary(rows, ids) {
+        const labelEl = document.getElementById(ids.label);
+        if (!labelEl) return;
+        const selectedRows = rows.filter(function(row) {
+          const cb = row.__checkbox;
+          return cb && cb.checked;
+        });
+        const targetRows = selectedRows.length ? selectedRows : rows.filter(function(row) {
+          return !row.classList.contains('hidden');
+        });
+        const label = selectedRows.length ? 'Totals (selected)' : 'Totals (visible)';
+        let bldgsSum = 0;
+        let unitsSum = 0;
+        let vtuSum = 0;
+        targetRows.forEach(function(row) {
+          const bldgs = Number(row.getAttribute('data-bldgs'));
+          const units = Number(row.getAttribute('data-units'));
+          const vtu = Number(row.getAttribute('data-vtu-bldgs'));
+          if (Number.isFinite(bldgs)) bldgsSum += bldgs;
+          if (Number.isFinite(units)) unitsSum += units;
+          if (Number.isFinite(vtu)) vtuSum += vtu;
+        });
+        const avg = bldgsSum > 0 ? unitsSum / bldgsSum : 0;
+        const rowCount = targetRows.length || 0;
+        labelEl.textContent = label + ' — ' + rowCount.toLocaleString() + (rowCount === 1 ? ' row' : ' rows');
+        const bldgsEl = document.getElementById(ids.bldgs);
+        const unitsEl = document.getElementById(ids.units);
+        const avgEl = document.getElementById(ids.avg);
+        const vtuEl = document.getElementById(ids.vtu);
+        if (bldgsEl) bldgsEl.textContent = bldgsSum.toLocaleString();
+        if (unitsEl) unitsEl.textContent = unitsSum.toLocaleString();
+        if (avgEl) avgEl.textContent = avg.toFixed(1);
+        if (vtuEl) vtuEl.textContent = vtuSum.toLocaleString();
+      }
+
+      function updateGroupTableSummaries() {
+        updateGroupTableSummary(blockRows, {
+          label: 'summary-blocks-label', bldgs: 'summary-blocks-bldgs',
+          units: 'summary-blocks-units', avg: 'summary-blocks-avg', vtu: 'summary-blocks-vtu',
+        });
+        updateGroupTableSummary(landlordRows, {
+          label: 'summary-landlords-label', bldgs: 'summary-landlords-bldgs',
+          units: 'summary-landlords-units', avg: 'summary-landlords-avg', vtu: 'summary-landlords-vtu',
+        });
+        updateGroupTableSummary(neighbourhoodRows, {
+          label: 'summary-neighbourhoods-label', bldgs: 'summary-neighbourhoods-bldgs',
+          units: 'summary-neighbourhoods-units', avg: 'summary-neighbourhoods-avg', vtu: 'summary-neighbourhoods-vtu',
+        });
+      }
+
       function setLegendDisplay(el, show) {
         if (!el) return;
         el.style.display = show ? 'block' : 'none';
@@ -814,8 +979,8 @@
           }
           if (typeof marker.setStyle === 'function') {
             marker.setStyle({
-              weight:0,
-              color:null,
+              weight: MARKER_STROKE_WEIGHT,
+              color: MARKER_STROKE_COLOR,
               fillOpacity: baseOpacity,
               fillColor: marker._baseColor || (marker.options && marker.options.fillColor) || '#9e9e9e'
             });
@@ -1188,7 +1353,7 @@
 
       function applyFilters() {
         metricKeys.forEach(updateMetricLabels);
-        const searchTerm = '';
+        const searchTerm = tableSearchInput ? tableSearchInput.value.trim().toLowerCase() : '';
         const selectedHoods = hoodInputs
           .filter(function(inp) { return inp.checked; })
           .map(function(inp) { return (inp.value || '').toLowerCase().trim(); });
@@ -1208,16 +1373,12 @@
             summary: summary,
           };
         });
-        const hideNonMembers = hideNonMembersChk ? hideNonMembersChk.checked : false;
         const visibleBids = new Set();
         buildingRows.forEach(function(row) {
           const bid = row.getAttribute('data-bid');
           const marker = window.buildingIndex[bid];
 
           let matches = true;
-          if (hideNonMembers) {
-            matches = row.getAttribute('data-has-vtu-member') === '1';
-          }
           const rowArea = (row.getAttribute('data-area') || '').toLowerCase().trim();
           if (restrictHoods) {
             matches = matches && selectedHoods.includes(rowArea);
@@ -1255,8 +1416,13 @@
             }
           }
 
+          const wasFiltered = marker ? marker._isFiltered : null;
           setMarkerVisibility(marker, matches);
-          if (marker) {
+          // updateMarkerColorAppearance() re-applies color via another setStyle
+          // call — only worth doing when this tick actually flipped the marker's
+          // filtered state (global color-scaling toggles are handled separately
+          // by applyVtuColorScaling(), which loops explicitly).
+          if (marker && wasFiltered !== marker._isFiltered) {
             updateMarkerColorAppearance(marker);
           }
 
@@ -1296,6 +1462,7 @@
               if (layer) layer._selectionRefs = 0;
               setBlockSelectionMarkers(blockId, false);
             }
+            updateGroupRowValues(row, ids, function(id) { return window.buildingIndex[id]; });
           }
           setBlockFiltered(blockId, shouldHide);
         });
@@ -1315,6 +1482,7 @@
             checkbox.checked = false;
             setOwnerSelection(owner, false);
           }
+          updateGroupRowValues(row, markers);
         });
 
         neighbourhoodRows.forEach(function(row) {
@@ -1327,15 +1495,17 @@
             checkbox.checked = false;
             setHoodSelection(hoodKey, false);
           }
+          updateGroupRowValues(row, markers);
         });
 
         updateDatasetStatus();
         updateMapStatus();
         updateSummaryBar();
+        updateGroupTableSummaries();
       }
 
-      if (hideNonMembersChk) hideNonMembersChk.addEventListener('change', applyFilters);
       if (hideEmptyBlocksChk) hideEmptyBlocksChk.addEventListener('change', applyFilters);
+      if (tableSearchInput) tableSearchInput.addEventListener('input', scheduleApplyFilters);
       hoodInputs.forEach(function(inp) { inp.addEventListener('change', applyFilters); });
 
       if (hoodSelectAllBtn) {
@@ -1404,7 +1574,6 @@
 
       if (resetBtn) {
         resetBtn.addEventListener('click', function() {
-          if (hideNonMembersChk) hideNonMembersChk.checked = false;
           if (hideEmptyBlocksChk) hideEmptyBlocksChk.checked = false;
           hoodInputs.forEach(function(inp) { inp.checked = true; });
           if (colorScaleChk) {

@@ -198,26 +198,65 @@
   <div class="pane-resize-handle" data-target="#sidebar-container" data-side="right" data-min-width="280"
     data-max-width="760" aria-hidden="true"></div>
   <div id="sidebar-tabs">
-    <button id="tab-landlords" class="active">Landlords</button>
-    <button id="tab-buildings">Buildings</button>
+    <button id="tab-neighbourhoods" class="active">Neighbourhoods</button>
     <button id="tab-blocks">Blocks</button>
-    <button id="tab-neighbourhoods">Neighbourhoods</button>
+    <button id="tab-buildings">Buildings</button>
+    <button id="tab-landlords">Landlords</button>
   </div>
   <div id="sidebar-content">
-    <div id="pane-landlords" class="pane active">
+    <div id="pane-neighbourhoods" class="pane active">
       <div class="table-wrap">
-        <table class="data" id="landlords-table">
+        <table class="data" id="neighbourhoods-table">
           <thead>
             <tr>
               <th class="select-head" data-sort="none">Select</th>
-              <th data-sort="text">Landlord</th>
+              <th data-sort="text">Neighbourhood</th>
               <th data-sort="number">Bldgs</th>
               <th data-sort="number">Units</th>
               <th data-sort="number">Avg Units/Bldg</th>
               <th data-sort="number">VTU bldgs</th>
             </tr>
           </thead>
-          <tbody>$landlords_rows</tbody>
+          <tbody>$neighbourhoods_rows</tbody>
+          <tfoot>
+            <tr class="summary-row">
+              <td></td>
+              <td id="summary-neighbourhoods-label">Totals (visible)</td>
+              <td id="summary-neighbourhoods-bldgs">0</td>
+              <td id="summary-neighbourhoods-units">0</td>
+              <td id="summary-neighbourhoods-avg">0.0</td>
+              <td id="summary-neighbourhoods-vtu">0</td>
+            </tr>
+          </tfoot>
+        </table>
+      </div>
+    </div>
+    <div id="pane-blocks" class="pane">
+      <div class="table-wrap">
+        <table class="data" id="blocks-table">
+          <thead>
+            <tr>
+              <th class="select-head" data-sort="none">Select</th>
+              <th data-sort="text">Block</th>
+              <th data-sort="number">Bldgs</th>
+              <th data-sort="number">Units</th>
+              <th data-sort="number">Avg Units/Bldg</th>
+              <th data-sort="number">Med Yr</th>
+              <th data-sort="number">VTU bldgs</th>
+            </tr>
+          </thead>
+          <tbody>$blocks_rows</tbody>
+          <tfoot>
+            <tr class="summary-row">
+              <td></td>
+              <td id="summary-blocks-label">Totals (visible)</td>
+              <td id="summary-blocks-bldgs">0</td>
+              <td id="summary-blocks-units">0</td>
+              <td id="summary-blocks-avg">0.0</td>
+              <td></td>
+              <td id="summary-blocks-vtu">0</td>
+            </tr>
+          </tfoot>
         </table>
       </div>
     </div>
@@ -252,38 +291,30 @@
         </table>
       </div>
     </div>
-    <div id="pane-blocks" class="pane">
+    <div id="pane-landlords" class="pane">
       <div class="table-wrap">
-        <table class="data" id="blocks-table">
+        <table class="data" id="landlords-table">
           <thead>
             <tr>
               <th class="select-head" data-sort="none">Select</th>
-              <th data-sort="text">Block</th>
-              <th data-sort="number">Bldgs</th>
-              <th data-sort="number">Units</th>
-              <th data-sort="number">Avg Units/Bldg</th>
-              <th data-sort="number">Med Yr</th>
-              <th data-sort="number">VTU bldgs</th>
-            </tr>
-          </thead>
-          <tbody>$blocks_rows</tbody>
-        </table>
-      </div>
-    </div>
-    <div id="pane-neighbourhoods" class="pane">
-      <div class="table-wrap">
-        <table class="data" id="neighbourhoods-table">
-          <thead>
-            <tr>
-              <th class="select-head" data-sort="none">Select</th>
-              <th data-sort="text">Neighbourhood</th>
+              <th data-sort="text">Landlord</th>
               <th data-sort="number">Bldgs</th>
               <th data-sort="number">Units</th>
               <th data-sort="number">Avg Units/Bldg</th>
               <th data-sort="number">VTU bldgs</th>
             </tr>
           </thead>
-          <tbody>$neighbourhoods_rows</tbody>
+          <tbody>$landlords_rows</tbody>
+          <tfoot>
+            <tr class="summary-row">
+              <td></td>
+              <td id="summary-landlords-label">Totals (visible)</td>
+              <td id="summary-landlords-bldgs">0</td>
+              <td id="summary-landlords-units">0</td>
+              <td id="summary-landlords-avg">0.0</td>
+              <td id="summary-landlords-vtu">0</td>
+            </tr>
+          </tfoot>
         </table>
       </div>
     </div>

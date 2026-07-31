@@ -169,7 +169,9 @@ def rows_blocks(df: pd.DataFrame) -> str:
         year_val = "" if pd.isna(r.median_year_built) else int(r.median_year_built)
         avg_units = float(r.avg_units_per_bldg)
         rows.append(
-            f'<tr data-block="{block_id}" data-area="{escape(local_area)}">'  # block
+            f'<tr data-block="{block_id}" data-area="{escape(local_area)}" '
+            f'data-bldgs="{int(r.buildings)}" data-units="{int(r.total_units)}" '
+            f'data-vtu-bldgs="{int(r.member_buildings)}">'  # block
             f'<td class="select-cell"><input type="checkbox" class="row-select" '
             f'data-type="block" data-target="{block_id}"></td>'
             f'<td data-sort-value="{block_label}">{block_label}</td>'
@@ -190,7 +192,9 @@ def rows_landlords(df: pd.DataFrame) -> str:
         units_val = "" if pd.isna(r.total_units) else int(r.total_units)
         avg_units = float(r.avg_units_per_bldg)
         rows.append(
-            f'<tr data-owner="{owner_key}">'  # owner
+            f'<tr data-owner="{owner_key}" '
+            f'data-bldgs="{int(r.buildings)}" data-units="{units_val if units_val != "" else 0}" '
+            f'data-vtu-bldgs="{int(r.member_buildings)}">'  # owner
             f'<td class="select-cell"><input type="checkbox" class="row-select" '
             f'data-type="owner" data-target="{owner_key}"></td>'
             f"<td>{escape(str(r.owner_group))}</td>"
@@ -210,7 +214,9 @@ def rows_neighbourhoods(df: pd.DataFrame) -> str:
         units_val = "" if pd.isna(r.total_units) else int(r.total_units)
         avg_units = float(r.avg_units_per_bldg)
         rows.append(
-            f'<tr data-area="{local_area}">'  # neighbourhood
+            f'<tr data-area="{local_area}" '
+            f'data-bldgs="{int(r.buildings)}" data-units="{units_val if units_val != "" else 0}" '
+            f'data-vtu-bldgs="{int(r.member_buildings)}">'  # neighbourhood
             f'<td class="select-cell"><input type="checkbox" class="row-select" '
             f'data-type="neighbourhood" data-target="{local_area}"></td>'
             f"<td>{local_area}</td>"

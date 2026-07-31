@@ -36,6 +36,19 @@ def add_blocks_layer(m: folium.Map, feature_collection: dict) -> folium.GeoJson:
 
     def block_style(feat):
         props = feat.get("properties") or {}
+        try:
+            buildings = int(props.get("buildings") or 0)
+        except (TypeError, ValueError):
+            buildings = 0
+        if buildings <= 0:
+            # Empty blocks carry no meaningful data — leave them transparent
+            # rather than painting them into the color scale.
+            return {
+                "fillColor": "transparent",
+                "color": "#b8b8b8",
+                "weight": 1,
+                "fillOpacity": 0,
+            }
         total_units = props.get("total_units") or 0
         try:
             total_units = float(total_units)
@@ -49,7 +62,7 @@ def add_blocks_layer(m: folium.Map, feature_collection: dict) -> folium.GeoJson:
             "fillColor": greens_color(scaled),
             "color": "#b8b8b8",
             "weight": 1,
-            "fillOpacity": 0.55,
+            "fillOpacity": 0.7,
         }
 
     popup = None
@@ -168,8 +181,8 @@ def add_buildings_layers(m: folium.Map, pts_df):
             radius=radius_val,
             fill=True,
             fill_opacity=opacity,
-            color=None,
-            weight=0,
+            color="#ffffff",
+            weight=0.6,
             fill_color=color,
         ).add_child(folium.Popup(popup_html, max_width=320))
 
@@ -190,6 +203,7 @@ def add_buildings_layers(m: folium.Map, pts_df):
                 "member_count": int(r["member_count"]) if pd.notna(r["member_count"]) else 0,
                 "units": units_val,
                 "local_area": r.get("local_area"),
+                "year_built": None if pd.isna(r["year_built"]) else int(r["year_built"]),
             }
         )
 

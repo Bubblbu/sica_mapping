@@ -64,15 +64,6 @@ BUILDING_METRICS = {
         "attr": "value-bldg",
         "bins": 24,
     },
-    "bldg_land_ratio": {
-        "label": "Building / Land ratio",
-        "format": "ratio",
-        "type": "float",
-        "step": 0.05,
-        "decimals": 2,
-        "attr": "value-ratio",
-        "bins": 18,
-    },
     "units": {
         "label": "Units",
         "format": "number",

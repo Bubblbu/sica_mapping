@@ -70,9 +70,17 @@
   #filters-panel select,
   #filters-panel input[type="date"],
   #filters-panel input[type="number"],
+  #filters-panel input[type="text"],
   #filters-panel input[type="range"] {
     width: 100%;
     box-sizing: border-box;
+  }
+
+  #filters-panel input[type="text"] {
+    padding: 6px 8px;
+    border: 1px solid #cdd1dd;
+    border-radius: 4px;
+    font-size: 13px;
   }
 
   #filters-panel .filter-grid {
@@ -289,18 +297,40 @@
     margin-top: 2px;
   }
 
-  #filters-panel button#filter-reset {
-    width: 100%;
-    padding: 6px;
-    border: 1px solid #bbb;
-    background: #f7f7f7;
+  #filters-panel .summary-actions {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 12px;
+  }
+
+  #filters-panel .summary-actions button {
+    flex: 1;
+    padding: 8px 10px;
     border-radius: 6px;
     cursor: pointer;
-    margin-top: 4px;
+    font-size: 13px;
+    font-weight: 600;
+    border: 1px solid transparent;
+  }
+
+  #filters-panel button#export-visible-csv {
+    background: #2f5fb0;
+    border-color: #2f5fb0;
+    color: #fff;
+  }
+
+  #filters-panel button#export-visible-csv:hover {
+    background: #27508f;
+  }
+
+  #filters-panel button#filter-reset {
+    background: #f3f5fb;
+    border-color: #cdd1dd;
+    color: #27354a;
   }
 
   #filters-panel button#filter-reset:hover {
-    background: #ececec;
+    background: #e6e9f4;
   }
 </style>
 <div id="filters-panel">
@@ -308,7 +338,11 @@
     aria-hidden="true"></div>
   <div class="filters-card">
     <div class="filter-section">
-      <h3>Overview Stats</h4>
+      <h3>Map Summary</h3>
+      <div class="summary-actions">
+        <button type="button" id="export-visible-csv">Export visible buildings (CSV)</button>
+        <button type="button" id="filter-reset">Reset filters</button>
+      </div>
       <table class="status-table">
         <thead>
           <tr>
@@ -338,24 +372,23 @@
       </table>
     </div>
     <div class="filter-section">
-      <h4>General options / Map</h4>
+      <h4>Map Display</h4>
       <div class="filter-visual">
         <label><input type="checkbox" id="viz-show-buildings" checked> Show buildings</label>
         <label><input type="checkbox" id="viz-show-blocks" checked> Show blocks</label>
         <label><input type="checkbox" id="viz-hide-empty-blocks"> Hide empty blocks</label>
         <label><input type="checkbox" id="viz-color-blocks" checked> Color-scale blocks (total units)</label>
+        <label><input type="checkbox" id="viz-color-vtu" checked> Color-scale buildings w/ VTU members</label>
         <label><input type="checkbox" id="viz-show-neighbourhoods" checked> Show neighbourhoods</label>
       </div>
-    </div>
-    <div class="filter-section">
-      <h4>Membership</h4>
-      <div class="filter-visual">
-        <label><input type="checkbox" id="viz-color-vtu" checked> Color-scale buildings w/ VTU members</label>
-        <label><input type="checkbox" id="filter-hide-non-members"> Hide buildings without VTU members</label>
-      </div>
-      <div id="filter-membership-year-section" class="filter-building"></div>
+      <!-- Hidden for now, not removed — re-enable by dropping this style. -->
+      <div id="filter-membership-year-section" class="filter-building" style="display:none;"></div>
     </div>
     <h3>Filters</h3>
+    <div class="filter-section">
+      <h4>Landlords</h4>
+      <input type="text" id="owner-search" placeholder="Search landlord / owner name…">
+    </div>
     <div class="filter-section">
       <h4>Neighbourhoods</h4>
       <div class="filter-tags" id="filter-neighbourhoods">
@@ -370,7 +403,5 @@
       <h4>Buildings</h4>
       <div id="filter-building-section" class="filter-building"></div>
     </div>
-    <button type="button" id="export-visible-csv">Export visible buildings (CSV)</button>
-    <button type="button" id="filter-reset">Reset filters</button>
   </div>
 </div>
