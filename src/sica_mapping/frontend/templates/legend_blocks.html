@@ -36,6 +36,25 @@
     margin-top: 6px;
     color: #414a5a;
   }
+  #legend-map .legend-key {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    margin-top: 6px;
+    font-size: 12px;
+  }
+  #legend-map .legend-key-row {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  #legend-map .legend-swatch {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    display: inline-block;
+    flex: 0 0 auto;
+  }
 </style>
 <div id="legend-map" style="left:${legend_left_offset}px; display:none;">
   <div class="legend-card" id="legend-blocks-section">
@@ -47,8 +66,10 @@
     <div class="legend-note">Color scaled to 0–$block_max_label units (absolute totals).</div>
   </div>
   <div class="legend-card" id="legend-buildings-section">
-    <div class="legend-heading">VTU bldgs — total member count</div>
-    <div class="legend-gradient" style="background: linear-gradient(to right, #0d0887, #5c01a6, #9c179e, #cc4778, #ed7953, #fb9f3a, #fdca26, #f0f921);"></div>
-    <div class="legend-note">Color scaled to 0–$vmax_label VTU members. When color scaling is off, VTU buildings are shown in gray.</div>
+    <div class="legend-heading">VTU buildings</div>
+    <div class="legend-key">
+      <div class="legend-key-row"><span class="legend-swatch" style="background:#cc4778;"></span> Has a VTU member</div>
+      <div class="legend-key-row"><span class="legend-swatch" style="background:#9e9e9e;"></span> No VTU member</div>
+    </div>
   </div>
 </div>

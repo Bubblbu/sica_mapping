@@ -22,12 +22,13 @@ from .data import (
     buildings_table,
     blocks_table,
     landlords_table,
+    neighbourhoods_table,
     rows_buildings,
     rows_blocks,
     rows_landlords,
+    rows_neighbourhoods,
 )
 from .frontend import (
-    compute_vmax,
     add_blocks_layer,
     add_buildings_layers,
     add_neighbourhoods_layer,
@@ -165,7 +166,6 @@ def build_map(args) -> None:
     elif extent > 0.03:
         zoom_start = 13
 
-    vmax = compute_vmax(pts_df)
     m = folium.Map(
         location=[center_lat, center_lon],
         zoom_start=zoom_start,
@@ -175,7 +175,7 @@ def build_map(args) -> None:
     fc = blocks_feature_collection(blocks_merged)
     blocks_geo = add_blocks_layer(m, fc)
     _layer_vtu, _layer_non, layer_vtu_name, layer_non_name, marker_metadata = (
-        add_buildings_layers(m, pts_df, vmax)
+        add_buildings_layers(m, pts_df)
     )
     neighbourhoods_fc = local_area_boundaries_feature_collection(args.local_area_boundary)
     neighbourhoods_geo = add_neighbourhoods_layer(m, neighbourhoods_fc)
@@ -201,12 +201,14 @@ def build_map(args) -> None:
     b_tbl = buildings_table(pts_df)
     k_tbl = blocks_table(blocks_merged)
     l_tbl = landlords_table(pts_df)
+    n_tbl = neighbourhoods_table(pts_df)
     m.get_root().html.add_child(
         folium.Element(
             sidebar_html(
                 rows_buildings(b_tbl),
                 rows_blocks(k_tbl),
                 rows_landlords(l_tbl),
+                rows_neighbourhoods(n_tbl),
                 args.sidebar_width,
             )
         )
@@ -263,7 +265,7 @@ def build_map(args) -> None:
         )
     )
 
-    legends = legends_html(vmax, args.sidebar_width, filter_cfg)
+    legends = legends_html(args.sidebar_width, filter_cfg)
     for legend in legends:
         m.get_root().html.add_child(folium.Element(legend))
 

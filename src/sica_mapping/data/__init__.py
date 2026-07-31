@@ -25,9 +25,11 @@ from .tables import (
     buildings_table,
     blocks_table,
     landlords_table,
+    neighbourhoods_table,
     rows_buildings,
     rows_blocks,
     rows_landlords,
+    rows_neighbourhoods,
 )
 from .vtu import (
     prepare_membership_records,
@@ -58,9 +60,11 @@ __all__ = [
     "buildings_table",
     "blocks_table",
     "landlords_table",
+    "neighbourhoods_table",
     "rows_buildings",
     "rows_blocks",
     "rows_landlords",
+    "rows_neighbourhoods",
     "prepare_membership_records",
     "membership_records_by_address",
     "membership_filter_config",

@@ -9,7 +9,7 @@ import numpy as np
 import pandas as pd
 from shapely.geometry import shape
 
-from .colors import greens_color, plasma_color
+from .colors import greens_color
 
 
 def _load_template(name: str) -> str:
@@ -20,15 +20,6 @@ SIDEBAR_HTML_TEMPLATE = Template(_load_template("sidebar.html"))
 WIRING_JS_TEMPLATE = Template(_load_template("wiring.js"))
 LEGEND_BLOCKS_TEMPLATE = Template(_load_template("legend_blocks.html"))
 LEGEND_FILTERS_TEMPLATE = Template(_load_template("legend_filters.html"))
-
-
-def compute_vmax(pts_df) -> float:
-    counts = pts_df["member_count"].replace([np.inf, -np.inf], np.nan)
-    pos = counts[(counts > 0) & (~counts.isna())]
-    if len(pos) == 0:
-        return 1.0
-    max_val = float(np.nanmax(pos))
-    return max(max_val, 1.0)
 
 
 def add_blocks_layer(m: folium.Map, feature_collection: dict) -> folium.GeoJson:
@@ -140,14 +131,9 @@ def marker_radius(units) -> float:
     return 2.5 + 7.0 * ratio
 
 
-def vtu_opacity(scaled: float) -> float:
-    return 0.30 + 0.40 * scaled
-
-
-def add_buildings_layers(m: folium.Map, pts_df, vmax: float):
-    # 1. Update layer name to reflect coloring by count
+def add_buildings_layers(m: folium.Map, pts_df):
     layer_vtu = folium.FeatureGroup(
-        name="VTU member buildings (Plasma by count)", show=True, overlay=True
+        name="VTU member buildings", show=True, overlay=True
     )
     layer_non = folium.FeatureGroup(
         name="Other buildings (gray)", show=True, overlay=True
@@ -155,12 +141,11 @@ def add_buildings_layers(m: folium.Map, pts_df, vmax: float):
     marker_metadata: list[dict[str, object]] = []
 
     for _, r in pts_df.iterrows():
-        count = r["member_count"]
         has_vtu_member = bool(r["has_vtu_member"])
-        scaled = 0.0 if pd.isna(count) or count <= 0 else min(float(count) / vmax, 1.0)
-        color = plasma_color(count, vmax) if has_vtu_member else "#9e9e9e"
+        # Binary indicator only — has a VTU member or not, no gradient by count.
+        color = "#cc4778" if has_vtu_member else "#9e9e9e"
         neutral_color = "#9e9e9e"
-        opacity = vtu_opacity(scaled) if has_vtu_member else 0.35
+        opacity = 0.75 if has_vtu_member else 0.35
         radius_val = marker_radius(r["units"])
         member_share = r.get("member_share_building", 0.0)
         units_val = None if pd.isna(r["units"]) else int(r["units"])
@@ -202,8 +187,9 @@ def add_buildings_layers(m: folium.Map, pts_df, vmax: float):
                 "base_color": color,
                 "neutral_color": neutral_color if has_vtu_member else color,
                 "is_vtu": has_vtu_member,
-                "member_count": int(count) if pd.notna(count) else 0,
+                "member_count": int(r["member_count"]) if pd.notna(r["member_count"]) else 0,
                 "units": units_val,
+                "local_area": r.get("local_area"),
             }
         )
 
@@ -216,13 +202,18 @@ def add_buildings_layers(m: folium.Map, pts_df, vmax: float):
 
 
 def sidebar_html(
-    buildings_rows: str, blocks_rows: str, landlords_rows: str, sidebar_width: int
+    buildings_rows: str,
+    blocks_rows: str,
+    landlords_rows: str,
+    neighbourhoods_rows: str,
+    sidebar_width: int,
 ) -> str:
     return SIDEBAR_HTML_TEMPLATE.safe_substitute(
         sidebar_width=sidebar_width,
         buildings_rows=buildings_rows,
         blocks_rows=blocks_rows,
         landlords_rows=landlords_rows,
+        neighbourhoods_rows=neighbourhoods_rows,
     )
 
 
@@ -247,7 +238,7 @@ def wiring_js(
 
 
 def legends_html(
-    vmax: float, sidebar_width: int, filter_config: dict[str, object]
+    sidebar_width: int, filter_config: dict[str, object]
 ) -> tuple[str, str]:
     neighbourhoods = filter_config.get("neighbourhoods") or []
     hood_entries: list[str] = []
@@ -289,19 +280,11 @@ def legends_html(
         sidebar_width_px = 0
     legend_left_offset = max(sidebar_width_px, 0) + 20
 
-    try:
-        vmax_value = int(round(float(vmax)))
-    except (TypeError, ValueError):
-        vmax_value = 0
-    if vmax_value < 0:
-        vmax_value = 0
-
     block_ticks_html = "".join(f"<span>{escape(tick)}</span>" for tick in block_ticks)
     legend_map = LEGEND_BLOCKS_TEMPLATE.substitute(
         block_ticks_html=block_ticks_html,
         block_max_label=format(block_max, ","),
         legend_left_offset=legend_left_offset,
-        vmax_label=format(vmax_value, ","),
     )
 
     legend_filters = LEGEND_FILTERS_TEMPLATE.substitute(

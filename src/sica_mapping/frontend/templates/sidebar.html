@@ -201,6 +201,7 @@
     <button id="tab-landlords" class="active">Landlords</button>
     <button id="tab-buildings">Buildings</button>
     <button id="tab-blocks">Blocks</button>
+    <button id="tab-neighbourhoods">Neighbourhoods</button>
   </div>
   <div id="sidebar-content">
     <div id="pane-landlords" class="pane active">
@@ -212,10 +213,8 @@
               <th data-sort="text">Landlord</th>
               <th data-sort="number">Bldgs</th>
               <th data-sort="number">Units</th>
+              <th data-sort="number">Avg Units/Bldg</th>
               <th data-sort="number">VTU bldgs</th>
-              <th data-sort="number">VTU mem</th>
-              <th data-sort="number">Share (%)</th>
-              <th data-sort="number">Members / 100 units</th>
             </tr>
           </thead>
           <tbody>$landlords_rows</tbody>
@@ -262,13 +261,29 @@
               <th data-sort="text">Block</th>
               <th data-sort="number">Bldgs</th>
               <th data-sort="number">Units</th>
+              <th data-sort="number">Avg Units/Bldg</th>
               <th data-sort="number">Med Yr</th>
               <th data-sort="number">VTU bldgs</th>
-              <th data-sort="number">VTU mem</th>
-              <th data-sort="number">Share (%)</th>
             </tr>
           </thead>
           <tbody>$blocks_rows</tbody>
+        </table>
+      </div>
+    </div>
+    <div id="pane-neighbourhoods" class="pane">
+      <div class="table-wrap">
+        <table class="data" id="neighbourhoods-table">
+          <thead>
+            <tr>
+              <th class="select-head" data-sort="none">Select</th>
+              <th data-sort="text">Neighbourhood</th>
+              <th data-sort="number">Bldgs</th>
+              <th data-sort="number">Units</th>
+              <th data-sort="number">Avg Units/Bldg</th>
+              <th data-sort="number">VTU bldgs</th>
+            </tr>
+          </thead>
+          <tbody>$neighbourhoods_rows</tbody>
         </table>
       </div>
     </div>

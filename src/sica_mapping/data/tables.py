@@ -34,10 +34,14 @@ def buildings_table(pts_df: pd.DataFrame) -> pd.DataFrame:
     )
 
 
+def _avg_units_per_bldg(total_units: pd.Series, buildings: pd.Series) -> pd.Series:
+    return np.where(buildings > 0, total_units / buildings, 0.0).round(1)
+
+
 def blocks_table(blocks_merged: pd.DataFrame) -> pd.DataFrame:
     tbl = blocks_merged.copy()
     tbl["median_year_built"] = tbl["median_year_built"].round().astype("Int64")
-    tbl["share_pct"] = (tbl["member_share"] * 100).round(0).astype(int)
+    tbl["avg_units_per_bldg"] = _avg_units_per_bldg(tbl["total_units"], tbl["buildings"])
     # Blocks with no buildings in this dataset fall back to "(Unknown)" (see
     # assign_block_labels); sort those last rather than first so a viewer sees
     # the actually-labeled, meaningful blocks before the empty-block bucket.
@@ -49,11 +53,9 @@ def blocks_table(blocks_merged: pd.DataFrame) -> pd.DataFrame:
             "local_area",
             "buildings",
             "total_units",
+            "avg_units_per_bldg",
             "median_year_built",
             "member_buildings",
-            "total_members",
-            "share_pct",
-            "member_share",
             "_is_unknown",
         ]
     ].sort_values(["_is_unknown", "block_label"], ascending=[True, True]).drop(
@@ -71,22 +73,29 @@ def landlords_table(pts_df: pd.DataFrame) -> pd.DataFrame:
             buildings=("address", "count"),
             total_units=("units", "sum"),
             member_buildings=("has_vtu_member", "sum"),
-            total_members=("member_count", "sum"),
         )
         .reset_index()
     )
-    landlords["share_bldgs"] = np.where(
-        landlords["buildings"] > 0,
-        landlords["member_buildings"] / landlords["buildings"],
-        0.0,
+    landlords["avg_units_per_bldg"] = _avg_units_per_bldg(
+        landlords["total_units"], landlords["buildings"]
     )
-    landlords["members_per_100_units"] = np.where(
-        landlords["total_units"] > 0,
-        landlords["total_members"] / landlords["total_units"] * 100.0,
-        0.0,
-    )
-    landlords["share_pct"] = (landlords["share_bldgs"] * 100).round(0).astype(int)
     return landlords.sort_values(["total_units", "buildings"], ascending=[False, False])
+
+
+def neighbourhoods_table(pts_df: pd.DataFrame) -> pd.DataFrame:
+    df = pts_df.copy()
+    df["local_area"] = df["local_area"].fillna("(Unknown)")
+    tbl = (
+        df.groupby("local_area")
+        .agg(
+            buildings=("address", "count"),
+            total_units=("units", "sum"),
+            member_buildings=("has_vtu_member", "sum"),
+        )
+        .reset_index()
+    )
+    tbl["avg_units_per_bldg"] = _avg_units_per_bldg(tbl["total_units"], tbl["buildings"])
+    return tbl.sort_values(["total_units", "buildings"], ascending=[False, False])
 
 
 def rows_buildings(df: pd.DataFrame) -> str:
@@ -158,6 +167,7 @@ def rows_blocks(df: pd.DataFrame) -> str:
         block_label = escape(str(r.block_label))
         local_area = "" if pd.isna(r.local_area) else str(r.local_area)
         year_val = "" if pd.isna(r.median_year_built) else int(r.median_year_built)
+        avg_units = float(r.avg_units_per_bldg)
         rows.append(
             f'<tr data-block="{block_id}" data-area="{escape(local_area)}">'  # block
             f'<td class="select-cell"><input type="checkbox" class="row-select" '
@@ -165,10 +175,9 @@ def rows_blocks(df: pd.DataFrame) -> str:
             f'<td data-sort-value="{block_label}">{block_label}</td>'
             f'<td data-sort-value="{int(r.buildings)}">{int(r.buildings)}</td>'
             f'<td data-sort-value="{int(r.total_units)}">{int(r.total_units)}</td>'
+            f'<td data-sort-value="{avg_units}">{avg_units:.1f}</td>'
             f'<td data-sort-value="{year_val}">{year_val}</td>'
             f'<td data-sort-value="{int(r.member_buildings)}">{int(r.member_buildings)}</td>'
-            f'<td data-sort-value="{int(r.total_members)}">{int(r.total_members)}</td>'
-            f'<td data-sort-value="{int(r.share_pct)}">{int(r.share_pct)}%</td>'
             f"</tr>"
         )
     return "\n".join(rows)
@@ -179,8 +188,7 @@ def rows_landlords(df: pd.DataFrame) -> str:
     for r in df.itertuples(index=False):
         owner_key = escape(str(r.owner_key))
         units_val = "" if pd.isna(r.total_units) else int(r.total_units)
-        share_pct = int(round(r.share_bldgs * 100))
-        per_100 = int(round(r.members_per_100_units))
+        avg_units = float(r.avg_units_per_bldg)
         rows.append(
             f'<tr data-owner="{owner_key}">'  # owner
             f'<td class="select-cell"><input type="checkbox" class="row-select" '
@@ -188,10 +196,28 @@ def rows_landlords(df: pd.DataFrame) -> str:
             f"<td>{escape(str(r.owner_group))}</td>"
             f'<td data-sort-value="{int(r.buildings)}">{int(r.buildings)}</td>'
             f'<td data-sort-value="{units_val}">{units_val}</td>'
+            f'<td data-sort-value="{avg_units}">{avg_units:.1f}</td>'
             f'<td data-sort-value="{int(r.member_buildings)}">{int(r.member_buildings)}</td>'
-            f'<td data-sort-value="{int(r.total_members)}">{int(r.total_members)}</td>'
-            f'<td data-sort-value="{share_pct}">{share_pct}%</td>'
-            f'<td data-sort-value="{per_100}">{per_100}</td>'
+            f"</tr>"
+        )
+    return "\n".join(rows)
+
+
+def rows_neighbourhoods(df: pd.DataFrame) -> str:
+    rows = []
+    for r in df.itertuples(index=False):
+        local_area = escape(str(r.local_area))
+        units_val = "" if pd.isna(r.total_units) else int(r.total_units)
+        avg_units = float(r.avg_units_per_bldg)
+        rows.append(
+            f'<tr data-area="{local_area}">'  # neighbourhood
+            f'<td class="select-cell"><input type="checkbox" class="row-select" '
+            f'data-type="neighbourhood" data-target="{local_area}"></td>'
+            f"<td>{local_area}</td>"
+            f'<td data-sort-value="{int(r.buildings)}">{int(r.buildings)}</td>'
+            f'<td data-sort-value="{units_val}">{units_val}</td>'
+            f'<td data-sort-value="{avg_units}">{avg_units:.1f}</td>'
+            f'<td data-sort-value="{int(r.member_buildings)}">{int(r.member_buildings)}</td>'
             f"</tr>"
         )
     return "\n".join(rows)

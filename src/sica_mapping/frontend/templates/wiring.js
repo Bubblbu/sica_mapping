@@ -45,6 +45,7 @@
       window.blockBuildingIndex = {};
       window.buildingIndex = {};
       window.ownerIndex = {};
+      window.hoodIndex = {};
       const BASE_ZOOM = 15;
       let currentZoomScale = 1;
       let colorScalingEnabled = true;
@@ -228,6 +229,13 @@
         });
       }
 
+      function setHoodSelection(hoodKey, selected) {
+        var arr = window.hoodIndex[hoodKey] || [];
+        arr.forEach(function(marker) {
+          adjustMarkerSelection(marker, selected ? +1 : -1);
+        });
+      }
+
       function setBlockSelectionMarkers(blockId, selected) {
         var ids = window.blockBuildingIndex[String(blockId)] || [];
         ids.forEach(function(bid) {
@@ -304,6 +312,14 @@
             }
           }
 
+          var hoodKey = String(meta.local_area || '').toLowerCase().trim();
+          if (hoodKey) {
+            if (!window.hoodIndex[hoodKey]) window.hoodIndex[hoodKey] = [];
+            if (window.hoodIndex[hoodKey].indexOf(marker) === -1) {
+              window.hoodIndex[hoodKey].push(marker);
+            }
+          }
+
           if (meta.block_id !== undefined && meta.block_id !== null) {
             var blockKey = String(meta.block_id);
             if (!window.blockBuildingIndex[blockKey]) window.blockBuildingIndex[blockKey] = [];
@@ -356,6 +372,18 @@
         });
       }
 
+      function neighbourhoodHover(hoodKey, on) {
+        var arr = window.hoodIndex[hoodKey] || [];
+        arr.forEach(function(marker) {
+          if (!marker || marker._isFiltered) return;
+          if (on) {
+            highlightMarker(marker, true);
+          } else if ((marker._selectionRefs || 0) === 0) {
+            highlightMarker(marker, false);
+          }
+        });
+      }
+
       function handleSelectionChange(evt) {
         var cb = evt.target;
         if (!cb.classList.contains('row-select')) return;
@@ -370,6 +398,8 @@
           setBlockSelectionMarkers(key, cb.checked);
         } else if (typ === 'owner') {
           setOwnerSelection(key, cb.checked);
+        } else if (typ === 'neighbourhood') {
+          setHoodSelection(key.toLowerCase().trim(), cb.checked);
         }
         updateSummaryBar();
       }
@@ -504,19 +534,23 @@
       const tabB = document.getElementById('tab-buildings');
       const tabK = document.getElementById('tab-blocks');
       const tabL = document.getElementById('tab-landlords');
+      const tabN = document.getElementById('tab-neighbourhoods');
       const paneB = document.getElementById('pane-buildings');
       const paneK = document.getElementById('pane-blocks');
       const paneL = document.getElementById('pane-landlords');
+      const paneN = document.getElementById('pane-neighbourhoods');
       function activate(which) {
-        [tabB, tabK, tabL].forEach(btn => btn && btn.classList.remove('active'));
-        [paneB, paneK, paneL].forEach(pane => pane && pane.classList.remove('active'));
+        [tabB, tabK, tabL, tabN].forEach(btn => btn && btn.classList.remove('active'));
+        [paneB, paneK, paneL, paneN].forEach(pane => pane && pane.classList.remove('active'));
         if (which === 'buildings') { if (tabB) tabB.classList.add('active'); if (paneB) paneB.classList.add('active'); }
         else if (which === 'blocks') { if (tabK) tabK.classList.add('active'); if (paneK) paneK.classList.add('active'); }
+        else if (which === 'neighbourhoods') { if (tabN) tabN.classList.add('active'); if (paneN) paneN.classList.add('active'); }
         else { if (tabL) tabL.classList.add('active'); if (paneL) paneL.classList.add('active'); }
       }
       if (tabB) tabB.addEventListener('click', () => activate('buildings'));
       if (tabK) tabK.addEventListener('click', () => activate('blocks'));
       if (tabL) tabL.addEventListener('click', () => activate('landlords'));
+      if (tabN) tabN.addEventListener('click', () => activate('neighbourhoods'));
 
       document.querySelectorAll('table.data thead th').forEach(function(th) {
         if ((th.dataset.sort || 'none') !== 'none') {
@@ -546,6 +580,12 @@
         row.addEventListener('mouseleave', function() { ownerHover(key, false); });
       });
 
+      document.querySelectorAll('#neighbourhoods-table tbody tr').forEach(function(row) {
+        var hoodKey = (row.getAttribute('data-area') || '').toLowerCase().trim();
+        row.addEventListener('mouseenter', function() { neighbourhoodHover(hoodKey, true); });
+        row.addEventListener('mouseleave', function() { neighbourhoodHover(hoodKey, false); });
+      });
+
       const hideNonMembersChk = document.getElementById('filter-hide-non-members');
       const hoodInputs = Array.from(document.querySelectorAll('.filter-neighbourhood-option'));
 
@@ -558,6 +598,9 @@
 
       const landlordRows = Array.from(document.querySelectorAll('#landlords-table tbody tr'));
       landlordRows.forEach(function(row) { row.__checkbox = row.querySelector('.row-select'); });
+
+      const neighbourhoodRows = Array.from(document.querySelectorAll('#neighbourhoods-table tbody tr'));
+      neighbourhoodRows.forEach(function(row) { row.__checkbox = row.querySelector('.row-select'); });
 
       const blockRowById = {};
       Array.from(document.querySelectorAll('#blocks-table tbody tr')).forEach(function(row) {
@@ -1271,6 +1314,18 @@
           if (!hasVisible && checkbox && checkbox.checked) {
             checkbox.checked = false;
             setOwnerSelection(owner, false);
+          }
+        });
+
+        neighbourhoodRows.forEach(function(row) {
+          var hoodKey = (row.getAttribute('data-area') || '').toLowerCase().trim();
+          var markers = window.hoodIndex[hoodKey] || [];
+          var hasVisible = markers.some(function(m) { return !m._isFiltered; });
+          row.classList.toggle('hidden', !hasVisible);
+          const checkbox = row.__checkbox;
+          if (!hasVisible && checkbox && checkbox.checked) {
+            checkbox.checked = false;
+            setHoodSelection(hoodKey, false);
           }
         });
 
