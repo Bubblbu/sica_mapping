@@ -11,7 +11,7 @@ import pandas as pd
 import numpy as np
 from shapely.geometry import shape
 
-from .core import setup_logging, logger
+from .core import setup_logging, logger, read_any_csv, normalize_cols
 from .data import (
     run_data_pipeline,
     cached_data_exists,
@@ -32,6 +32,8 @@ from .frontend import (
     add_blocks_layer,
     add_buildings_layers,
     add_neighbourhoods_layer,
+    add_sro_housing_layer,
+    add_rezoning_layer,
     sidebar_html,
     wiring_js,
     legends_html,
@@ -180,6 +182,29 @@ def build_map(args) -> None:
     neighbourhoods_fc = local_area_boundaries_feature_collection(args.local_area_boundary)
     neighbourhoods_geo = add_neighbourhoods_layer(m, neighbourhoods_fc)
 
+    layer_sro_housing_name: str | None = None
+    sro_housing_path = getattr(args, "sro_housing", None)
+    if sro_housing_path and Path(sro_housing_path).exists():
+        sro_df = normalize_cols(read_any_csv(sro_housing_path))
+        _sro_layer, layer_sro_housing_name = add_sro_housing_layer(m, sro_df)
+        logger.info("Loaded SRO/SRA housing overlay from %s", sro_housing_path)
+    elif sro_housing_path:
+        logger.warning("SRO housing CSV not found, skipping overlay: %s", sro_housing_path)
+
+    layer_rezoning_name: str | None = None
+    rezoning_marker_metadata: list[dict[str, Any]] = []
+    rezoning_path = getattr(args, "rezoning_applications", None)
+    if rezoning_path and Path(rezoning_path).exists():
+        rezoning_df = normalize_cols(read_any_csv(rezoning_path))
+        _rezoning_layer, layer_rezoning_name, rezoning_marker_metadata = add_rezoning_layer(
+            m, rezoning_df
+        )
+        logger.info("Loaded rezoning applications overlay from %s", rezoning_path)
+    elif rezoning_path:
+        logger.warning(
+            "Rezoning applications CSV not found, skipping overlay: %s", rezoning_path
+        )
+
     if bounds_info and all(
         k in bounds_info for k in ("lat_min", "lon_min", "lat_max", "lon_max")
     ):
@@ -237,6 +262,7 @@ def build_map(args) -> None:
     filter_config_name = f"{asset_base}_filter_config.json"
     marker_metadata_name = f"{asset_base}_marker_metadata.json"
     building_records_name = f"{asset_base}_building_records.json"
+    rezoning_metadata_name = f"{asset_base}_rezoning_metadata.json"
 
     (output_dir / filter_config_name).write_text(
         json.dumps(filter_cfg, separators=(",", ":")),
@@ -250,6 +276,10 @@ def build_map(args) -> None:
         json.dumps(building_records_payload, separators=(",", ":")),
         encoding="utf-8",
     )
+    (output_dir / rezoning_metadata_name).write_text(
+        json.dumps(rezoning_marker_metadata, separators=(",", ":")),
+        encoding="utf-8",
+    )
 
     m.get_root().html.add_child(
         folium.Element(
@@ -261,6 +291,9 @@ def build_map(args) -> None:
                 filter_config_name,
                 marker_metadata_name,
                 building_records_name,
+                layer_sro_housing_var=layer_sro_housing_name,
+                layer_rezoning_var=layer_rezoning_name,
+                rezoning_metadata_url=rezoning_metadata_name,
             )
         )
     )

@@ -22,6 +22,10 @@ _REQUIRED_PATHS = (
     "local_area_boundary",
     "vtu",
 )
+_OPTIONAL_PATHS = (
+    "sro_housing",
+    "rezoning_applications",
+)
 
 
 def _load_config(path: str) -> dict[str, object]:
@@ -60,7 +64,7 @@ def _merge_config(args: argparse.Namespace, config: dict[str, object]) -> None:
         "local_area": None,
     }
 
-    for field in _REQUIRED_PATHS:
+    for field in _REQUIRED_PATHS + _OPTIONAL_PATHS:
         if getattr(args, field) is None and field in flat:
             setattr(args, field, flat[field])
     for field, default in defaults.items():
@@ -115,6 +119,18 @@ def parse_args() -> argparse.Namespace:
         help="Local area (neighbourhood) boundary CSV (Vancouver Open Data; name, geom polygon)",
     )
     ap.add_argument("--vtu", help="VTU members CSV (with address column)")
+    ap.add_argument(
+        "--sro-housing",
+        dest="sro_housing",
+        default=None,
+        help="Optional SRO/SRA housing CSV overlay (Address, Latitude, Longitude, Owner, etc.)",
+    )
+    ap.add_argument(
+        "--rezoning-applications",
+        dest="rezoning_applications",
+        default=None,
+        help="Optional rezoning applications CSV overlay (Name, Status, Latitude, Longitude, etc.)",
+    )
     ap.add_argument("--out", help=f"Output HTML (default: {DEFAULT_OUT})")
     ap.add_argument(
         "--bbox", help=f"lon_min,lat_min,lon_max,lat_max (default: {DEFAULT_BBOX})"

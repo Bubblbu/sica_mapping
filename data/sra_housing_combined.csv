@@ -1,0 +1,174 @@
+ID,Address,Building Name,Secondary Address,Area,Latitude,Longitude,Owner,Operator,Operator Group,Ownership Group,# Registered Rooms,Occupancy Status,Match Method
+1,210 Abbott St.,Dominion Hotel,214 & 216 Abbott St.,Downtown Eastside / Chinatown / Gastown / Strathcona,49.2835594791821,-123.106232882711,BCH,Atira Property Managem,Non-Profit,Government,63,Open,address
+2,320 Abbott St.,Metropole Hotel,,Downtown Eastside / Chinatown / Gastown / Strathcona,49.2825361685905,-123.106675245075,Phl Kim - 0733603 BC Ltd,Private,Private,Private,60,Open,address
+3,404 Abbott St.,Abbott Mansions,"418, 402 & 420 Abbott St.; 84 W Hastings St.",Downtown Eastside / Chinatown / Gastown / Strathcona,49.2816803732872,-123.107051739579,Central City Foundation,Atira Property Managem,Non-Profit,Non-Profit,70,Open,building name
+4,455 Abbott St.,Lotus Hotel,,Downtown Eastside / Chinatown / Gastown / Strathcona,49.2813983766772,-123.107691821345,PR Lotus Hotel Ltd,Private,Private,Private,110,Open,address
+5,90 Alexander St.,Alexander Residence,103 Columbia St.; 91 & 99 Powell St.,Downtown Eastside / Chinatown / Gastown / Strathcona,49.2834925424538,-123.102477767824,COV,COV,Government,Government,30,Open,building name
+6,313 Alexander St.,Kenworth Rooms,,Downtown Eastside / Chinatown / Gastown / Strathcona,49.2842428088173,-123.097332628042,COV,Atira Property Managem,Non-Profit,Government,24,Open,address
+7,362 Alexander St.,Seaview Apartments,,Downtown Eastside / Chinatown / Gastown / Strathcona,49.2837644869862,-123.095676533273,Babek Industries Ltd,Atira Women's Resourc,N on-Profit,Private,36,Open,address
+8,"500 & 502
+ Alexander St.",International Inn,120 Jackson Ave.,Downtown Eastside / Chinatown / Gastown / Strathcona,49.2837113883212,-123.093080321181,,,,,,,unmatched
+9,504 Alexander St.,Decker Residence,,Downtown Eastside / Chinatown / Gastown / Strathcona,49.2837132479636,-123.092892790724,Decker Residence Ltd,Private,Private,Private,37,Open,address
+10,514 Alexander St.,Phoenix Apartments,,Downtown Eastside / Chinatown / Gastown / Strathcona,49.2837042893413,-123.092400809148,COV,,,Government,20,Closed,address
+11,610 Alexander St.,Laurel Apartments,612 Alexander St.,Downtown Eastside / Chinatown / Gastown / Strathcona,49.2836789405264,-123.091025438138,Chris Wall - 1078022 BC LTD,Private,Private,Private,50,Open,address
+12,658 Alexander St.,Star Beach Haven,,Downtown Eastside / Chinatown / Gastown / Strathcona,49.2836608333694,-123.090031271811,Helen Poon - Rose Hotels Ltd,Private,Private,Private,19,Open,address
+13,666 Alexander St.,Ocean Rooms,,Downtown Eastside / Chinatown / Gastown / Strathcona,49.2836570392772,-123.089821848446,,,,,,,unmatched
+14,58 Alexander St.,Alexander Residence,59 Powell St.,Downtown Eastside / Chinatown / Gastown / Strathcona,49.2834619432774,-123.102704920954,COV,COV,Government,Government,30,Open,address
+15,310 Alexander St.,Veterans Memorial Manor,320  Alexander St.,Downtown Eastside / Chinatown / Gastown / Strathcona,49.283791367139,-123.097090121901,COV,COV,Government,Government,134,Open,address
+16,36 Blood Alley Square,Stanley/new Fountain,"30, 40, 44, 52 & 60 Blood Alley Square; 23, 25, 33, 41, 45, 47, 49 & 51 W Cordova St.",Downtown Eastside / Chinatown / Gastown / Strathcona,49.2828704317282,-123.105225267059,,,,,,,unmatched
+17,313 Cambie St.,Danny's Inn/rooms,"315, 317,319, 321, 323 & 325 Cambie St.",Downtown Eastside / Chinatown / Gastown / Strathcona,49.2832563266561,-123.109494544096,Danny's Inn LTD,Private,Private,Private,18,Open,building name
+18,322 Cambie St.,Meville Rooms,324 Cambie St.,Downtown Eastside / Chinatown / Gastown / Strathcona,49.2829219566933,-123.109111485486,1296536 BC Ltd (Babak Marzbani),Private,Private,Private,9,Open,address
+19,340 Cambie St.,Gastown Hostel,,Downtown Eastside / Chinatown / Gastown / Strathcona,49.2827649720642,-123.109069982215,635142 BC Ltd,,,Private,42,Closed,address
+20,425 Campbell Ave.,St. Elmo Hotel/rooms,427 & 429 Campbell Ave.,Downtown Eastside / Chinatown / Gastown / Strathcona,49.2804819484319,-123.085054799353,Chris Los - Polo Hotel Ltd,Private,Private,Private,20,Open,address
+21,204 Carrall St.,Glory Hotel,202 & 206 Carrall St.,Downtown Eastside / Chinatown / Gastown / Strathcona,49.2829958347528,-123.10389365387,Mike Goyal - 1001438 BC Ltd,Private,Private,Private,41,Open,address
+22,309 Carrall St.,Rainier Hotel,"307, 313 & 315 Carrall St.;  2 & 6 W Cordova St.",Downtown Eastside / Chinatown / Gastown / Strathcona,49.2822409961511,-123.10462143333,BCH,PHS,Non-Profit,Government,21,Open,address
+23,412 Carrall St.,Pennsylvania Hotel,,Downtown Eastside / Chinatown / Gastown / Strathcona,49.2811164418784,-123.104152624996,BCH,PHS,Non-Profit,Government,44,Open,address
+24,488 Carrall St.,West Hotel,,Downtown Eastside / Chinatown / Gastown / Strathcona,49.2808219933294,-123.104059830663,Chris Wall - 1058063 BC Ltd,Private,Private,Private,98,Open,address
+25,303 Columbia St.,New Columbia Hotel,321 Columbia St.,Downtown Eastside / Chinatown / Gastown / Strathcona,49.2820807755428,-123.10246826645,Atira,Atira,Non-Profit,Non-Profit,78,Open,address
+26,351 Columbia St.,Evergreen Rooms,369 & 375 Columbia St.,Downtown Eastside / Chinatown / Gastown / Strathcona,49.2816904957748,-123.102432764316,Yahya Nickpour - Persepolis Investments Inc,Private,Private,Private,27,Open,address
+27,412 Columbia St.,Cosy Corner Inn,100 E Hastings St.; 410 Columbia St.,Downtown Eastside / Chinatown / Gastown / Strathcona,49.2811462651224,-123.102075068973,,,,,,,unmatched
+28,414 Columbia St.,Yin Ping Benevolent Soc.,416 & 420 Columbia St.; 106 E Hastings St.,Downtown Eastside / Chinatown / Gastown / Strathcona,49.2810757567627,-123.101973792024,Yin Ping Benevolent Society of Canada,Bob Leung and Richard Chang,,Chinese Society,14,Open,address
+29,42 E Cordova St.,Central Residence,,Downtown Eastside / Chinatown / Gastown / Strathcona,49.282095454619,-123.103254122375,COV,COV,Government,Government,65,Open,address
+30,50 E Cordova St.,Wonder Rooms,52 E Cordova St.,Downtown Eastside / Chinatown / Gastown / Strathcona,49.2820915049232,-123.103044364153,Southwood Ventures Inc,Private,Private,Private,39,Open,address
+31,54 E Cordova St.,Cordova's Residence,56 E Cordova St.,Downtown Eastside / Chinatown / Gastown / Strathcona,49.2820895295285,-123.102939938567,BCH,Atira Property Managem,Non-Profit,Government,30,Open,address
+32,100 E Cordova St.,Bridge Housing,302 Columbia St.,Downtown Eastside / Chinatown / Gastown / Strathcona,49.2820716726075,-123.101982194735,BCH,Atira Property Managem,Non-Profit,Government,36,Open,address
+33,139 E Cordova St.,United Rooms,,Downtown Eastside / Chinatown / Gastown / Strathcona,49.2825662118281,-123.100860644596,Shun Chi Company Ltd. Chris Wall - 1208149 BD L,P rivate,Private,Private,44,Open,address
+34,512 E Cordova St.,Smiley's Rooms,,Downtown Eastside / Chinatown / Gastown / Strathcona,49.2819051382726,-123.093001751984,Raincty Housing And Support Society,Raincity,Non-Profit,Non-Profit,24,Open,address
+35,9 W Cordova St.,Boulder Rooms,1 W Cordova St.,Downtown Eastside / Chinatown / Gastown / Strathcona,49.2827018399691,-123.104594063322,,,,,,,unmatched
+36,50 W Cordova St.,Hildon Hotel,,Downtown Eastside / Chinatown / Gastown / Strathcona,49.2824769484685,-123.105842800256,Newton Investments Ltd,Private,Private,Private,135,Open,address
+37,57 W Cordova St.,Traveller's Hotel,,Downtown Eastside / Chinatown / Gastown / Strathcona,49.2830108503539,-123.105682375769,Peter Plett - Fortin Holdings Ltd,Private,Private,Private,58,Open,address
+38,368 E Cordova St.,Cordova House,,Downtown Eastside / Chinatown / Gastown / Strathcona,49.2819632761177,-123.09613857891,BCH,Bloom Group,Non-Profit,Government,70,Open,address
+39,420 E Cordova St.,Hugh Bird Residence,412 E Cordova St.,Downtown Eastside / Chinatown / Gastown / Strathcona,49.2819389125644,-123.094822326214,BCH,COV,Government,Government,65,Open,address
+40,450 E Cordova St.,Oppenheimer Lodge,,Downtown Eastside / Chinatown / Gastown / Strathcona,49.2819220331967,-123.093906880104,BCH,COV,Government,Government,147,Open,address
+41,535 E Cordova St.,Antoinette Lodge,,Downtown Eastside / Chinatown / Gastown / Strathcona,49.2824133936589,-123.092614270999,BCH,COV,Government,Government,78,Open,address
+42,604 E Cordova St.,Union Gospel Mission,616 E Cordova St.,Downtown Eastside / Chinatown / Gastown / Strathcona,49.2818679714333,-123.090999089178,,,,,,,unmatched
+43,124 Dunlevy Ave.,Roddan Lodge,,Downtown Eastside / Chinatown / Gastown / Strathcona,49.2837484624027,-123.094823641663,,,,,,,unmatched
+44,143 Dunlevy Ave.,New Wings Hotel,"131,135 & 139 Dunlevy Ave.; 395, 397 & 399 Powell St.",Downtown Eastside / Chinatown / Gastown / Strathcona,49.283372313439,-123.095536202149,"Kim, Yung J",Atira Women's Resourc,N on-Profit,Private,56,Open,address
+45,500 Dunsmuir St.,Dunsmuir House,,Downtown Core,49.2823801723275,-123.114980602883,Holborn,,,Private,167,Closed,address
+46,208 E Georgia St.,Pacific Hotel,212 E Georgia St; 700,Downtown Eastside / Chinatown / Gastown / Strathcona,49.2784015631764,-123.099313268731,Porte Industries Ltd,Atira Property Managem,Non-Profit,Private,73,Open,address
+47,221 E Georgia St.,,,Downtown Eastside / Chinatown / Gastown / Strathcona,49.2788174005972,-123.098806429003,Giovanni & Catherine Casu - Casu Holdings Ltd,Private,Private,Private,16,Open,address
+48,291 E Georgia St.,Arno Rooms,293 E Georgia St.,Downtown Eastside / Chinatown / Gastown / Strathcona,49.2786887558693,-123.097370107101,Steve Lippman 291 East Georgia Holdings Ltd (Ste,vP rivate,Private,Private,34,Open,address
+49,527 E Georgia St.,Cathay Lodge,531 & 533 E Georgia St.,Downtown Eastside / Chinatown / Gastown / Strathcona,49.278707914447,-123.092776027807,Capilano Heights Restaurant Co Ltd,Private,Private,Private,34,Open,address
+50,628 E Georgia St.,,630 E Georgia St.,Downtown Eastside / Chinatown / Gastown / Strathcona,49.2781491199844,-123.090899624333,Andrew Charney,Private,Private,Private,5,Open,building name
+51,634 E Georgia St.,Georgia Rooms,,Downtown Eastside / Chinatown / Gastown / Strathcona,49.2781469538302,-123.090795093842,Steve Lippman - 634 East Georgia St Holdings Ltd,Private,Private,Private,28,Open,address
+52,1218 E Georgia St.,,,Downtown Eastside / Chinatown / Gastown / Strathcona,49.2783198484735,-123.078721990542,Andrew Charney,Private,Private,Private,5,Open,address
+53,876 Granville St.,State Hotel,872 & 874 Granville St.,Downtown South,49.2803695087535,-123.120732288084,Bonnis Properties Inc.,,,Private,53,Closed,address
+54,936 Granville St.,Siesta Rooms,932 Granville St.,Downtown South,49.2796704892702,-123.12181419919,Landco 932 Properties LTD,Private,Private,Private,71,Open,building name
+55,1044 Granville St.,Regal Hotel,1046 & 1048 Granville St.,Downtown South,49.2786165721871,-123.123411486767,Sahota - Regal Eighty Management Corp,Private,Private,Private,83,Open,address
+56,1060 Granville St.,Vogue Hotel,1062 Granville St.,Downtown South,49.2784168731954,-123.123707337551,Laudisio - 1226668 BC LTD,Private,Private,Private,80,Open,address
+57,1125 Granville St.,Hotel Clifton,1127 Granville St.,Downtown South,49.2780939150148,-123.125382466893,Soterra,,,Private,74,Closed,address
+58,1161 Granville St.,St. Helen's Hotel,1163 Granville St.,Downtown South,49.2777444308841,-123.12588096884,BCH,Atira Property Managem,Non-Profit,Government,86,Open,address
+59,1261 Granville St.,Granville Hotel,1259 & 1263 Granville St.,Downtown South,49.2766959245241,-123.127495126529,COV,COV,Government,Government,82,Open,address
+60,1300 Granville St.,Yale Hotel,,Downtown South,49.2757874018201,-123.127670539486,COV,Community Builders,Non-Profit,Government,43,Open,building name
+61,553 Hamilton St.,Del Mar Hotel,555 Hamilton St.,Downtown Core,49.2816075049879,-123.112286776783,Riste Investments Ltd,Private,Private,Private,28,Open,address
+62,25 E Hastings St.,New Dodson Hotel,,Downtown Eastside / Chinatown / Gastown / Strathcona,49.2817130742918,-123.103637220236,Anhart Community Housing Society,Anhart Foundatoin,Non-Profit,Non-Profit,70,Open,address
+63,41 E Hastings St.,Universal Rooms,39 & 49 E Hastings St.,Downtown Eastside / Chinatown / Gastown / Strathcona,49.2817062080024,-123.103270429694,,,,,,,unmatched
+64,52 E Hastings St.,Shaldon Hotel,"56, 58 & 60 E Hastings St.",Downtown Eastside / Chinatown / Gastown / Strathcona,49.2810935269667,-123.102928001726,,,,,,,unmatched
+65,101 E Hastings St.,Sunrise Hotel,360 Columbia St.,Downtown Eastside / Chinatown / Gastown / Strathcona,49.2816822455951,-123.101999305327,BCH,PHS,Non-Profit,Government,52,Open,address
+66,103 E Hastings St.,Hastings Rooms,105 E Hastings St.,Downtown Eastside / Chinatown / Gastown / Strathcona,49.2816792362331,-123.10184249815,BCH,PHS,Non-Profit,Government,16,Open,address
+67,122 E Hastings St.,Brandiz Hotel,,Downtown Eastside / Chinatown / Gastown / Strathcona,49.2810688849897,-123.101607233182,Mario and Anna Laudisio - Man Kei Enterprises Ltd,Private,Private,Private,100,Open,address
+68,137 E Hastings St.,West Inn,139 E Hastings St.,Downtown Eastside / Chinatown / Gastown / Strathcona,49.2816686807233,-123.101266405869,,,,,,,unmatched
+69,159 E Hastings St.,Balmoral Hotel,,Downtown Eastside / Chinatown / Gastown / Strathcona,49.2816609536969,-123.100846780375,COV,,,Government,176,Closed,address
+70,160 E Hastings St.,Regent Hotel,,Downtown Eastside / Chinatown / Gastown / Strathcona,49.2810532509261,-123.100769239166,COV,,,Government,153,Closed,address
+71,166 E Hastings St.,Roosevelt Hotel,,Downtown Eastside / Chinatown / Gastown / Strathcona,49.2810483526267,-123.100507557441,BCH,PHS,Non-Profit,Government,42,Open,address
+72,177 E Hastings St.,Washington Hotel,179 E Hastings St.,Downtown Eastside / Chinatown / Gastown / Strathcona,49.2816542578244,-123.100480671222,BCH,PHS,Non-Profit,Government,81,Open,address
+73,235 E Hastings St.,Empress Hotel,,Downtown Eastside / Chinatown / Gastown / Strathcona,49.2816227972192,-123.098793213114,Chris Wall - 1030163 BC Ltd,Private,Private,Private,73,Open,address
+74,237 E Hastings St.,Phoenix Hotel,,Downtown Eastside / Chinatown / Gastown / Strathcona,49.2816208180786,-123.098688675305,NATIVES OF TOI SHAN BENEVOLENT,Private,Private,Chinese Society,33,Open,address
+75,239 E Hastings St.,Belmont Hotel/rooms,241 E Hastings St.,Downtown Eastside / Chinatown / Gastown / Strathcona,49.2816189286801,-123.09858425106,"Chang, Alan B; Chang, Douglas B and Chang, Mar",Private,Private,Private,18,Open,address
+76,242 E Hastings St.,Mt Everest Rooms,244 E Hastings St.,Downtown Eastside / Chinatown / Gastown / Strathcona,49.2810133432288,-123.098553112676,Min Sum & Annabelle Sum & Tony Sum & Susana,SPrivate,Private,Private,25,Open,building name
+77,249 E Hastings St.,Afton Hotel Rooms,251 E Hastings St.,Downtown Eastside / Chinatown / Gastown / Strathcona,49.2816149705054,-123.09837449522,WILLIE WONG,Private,Private,Private,38,Open,building name
+78,258 E Hastings St.,Savoy Hotel,260 E Hastings St.,Downtown Eastside / Chinatown / Gastown / Strathcona,49.2810061901295,-123.09818734785,BCH,Atira Property Managem,Non-Profit,Government,25,Open,address
+79,261 E Hastings St.,Walton Hotel,263 & 265 E Hastings St.,Downtown Eastside / Chinatown / Gastown / Strathcona,49.2816079972879,-123.098008046064,BCH,Lookout,Non-Profit,Government,48,Open,building name
+80,341 E Hastings St.,Sunwest Hotel,343 E Hastings St.,Downtown Eastside / Chinatown / Gastown / Strathcona,49.2815804866231,-123.096501435437,Thuan Phouc Holdings Ltd,Private,Private,Private,23,Open,address
+81,344 E Hastings St.,Hazelwood Hotel,342 & 346 E Hastings St.,Downtown Eastside / Chinatown / Gastown / Strathcona,49.2809711122655,-123.096375873156,BCH,Atira Property Managem,Non-Profit,Government,110,Open,address
+82,367 E Hastings St.,Holborn Hotel,369 E Hastings St.,Downtown Eastside / Chinatown / Gastown / Strathcona,49.2815709400939,-123.095977841047,Kam C Woo & Lin D Woo,Private,Private,Private,35,Open,address
+83,389 E Hastings St.,,,Downtown Eastside / Chinatown / Gastown / Strathcona,49.2815632832318,-123.095558897617,ING SUEY SUN TONG ASSOCIATION,Private,Private,Chinese Society,7,Closed,address
+84,403 E Hastings St.,Patricia Hotel,,Downtown Eastside / Chinatown / Gastown / Strathcona,49.2815551857318,-123.095127141854,BCH,Atira Property Managem,Non-Profit,Government,204,Open,address
+85,456 E Hastings St.,Orwell Hotel,,Downtown Eastside / Chinatown / Gastown / Strathcona,49.2809303096108,-123.09416133949,BCH,Vancouver Native Hous,Non-Profit,Government,55,Open,address
+86,561 E Hastings St.,Patrick Anthony Residence,563 E Hastings St.,Downtown Eastside / Chinatown / Gastown / Strathcona,49.2814967650498,-123.09197220117,Peter Plett - Pepple Enterprises Ltd,Atira Property Managem,Non-Profit,Private,54,Open,address
+87,375 Princess Ave.,Carl Rooms,573 & 577 E Hastings St.; 335 Princess Ave.,Downtown Eastside / Chinatown / Gastown / Strathcona,49.2814918464697,-123.09171097145,BCH,Atira Property Managem,Non-Profit,Government,44,Open,address
+88,635 E Hastings St.,Shamrock Hotel,637 E Hastings St.,Downtown Eastside / Chinatown / Gastown / Strathcona,49.2814721793192,-123.090649386696,Angie Kalhar,Private,Private,Private,29,Open,address
+89,769 E Hastings St.,Astoria Hotel,,Downtown Eastside / Chinatown / Gastown / Strathcona,49.2814208732398,-123.087912829708,Sahota - Yang-Myung Holdings Ltd,Private,Private,Private,85,Open,address
+90,786 E Hastings St.,Woodbine Hotel,782 & 784 E Hastings St.,Downtown Eastside / Chinatown / Gastown / Strathcona,49.2808072051953,-123.087626032828,Kim Thanh Nguyen,Private,Private,Private,45,Open,building name
+91,872 E Hastings St.,,,Downtown Eastside / Chinatown / Gastown / Strathcona,49.280767688409,-123.085513327059,Diao Yuying M and Yang Shuping,Private,Private,Private,7,Open,address
+92,1168 E Hastings St.,Vernon Apartments,,Downtown Eastside / Chinatown / Gastown / Strathcona,49.2806779457164,-123.079711653891,BC Housing,,,Government,32,Closed,address
+93,1190 E Hastings St.,St. Clair No. 2,"1192 E Hastings St.; 403, 405 & 407 Vernon Dr.",Downtown Eastside / Chinatown / Gastown / Strathcona,49.2806740359021,-123.079381726036,TLA Enterprises LTD,Private,Private,Private,30,Open,address
+94,5 W Hastings St.,Canadian North Star,,Downtown Eastside / Chinatown / Gastown / Strathcona,49.281869611542,-123.104874273936,Soterra - Five West Hastings Holdings Ltd,Private,Private,Private,31,Open,address
+95,7 W Hastings St.,Beacon Hotel,9 & 11 W Hastings St.,Downtown Eastside / Chinatown / Gastown / Strathcona,49.2818937730614,-123.105006977331,BCH,PHS,Non-Profit,Government,36,Open,address
+96,18 W Hastings St.,Burns Block,16 W Hastings St.,Downtown Eastside / Chinatown / Gastown / Strathcona,49.2813807449944,-123.105158153001,,,,,,,unmatched
+97,20 W Hastings St.,New Portland Hotel,30 W Hastings St.,Downtown Eastside / Chinatown / Gastown / Strathcona,49.2813976308489,-123.105477911412,BCH,Lookout,Non-Profit,Government,87,Open,address
+98,29 W Hastings St.,Cosmopolitan Hotel,31 W Hastings St.,Downtown Eastside / Chinatown / Gastown / Strathcona,49.2820010680917,-123.105594277256,Central City Foundation,Central Cty Foundation,Non-Profit,Non-Profit,42,Open,address
+99,33 W Hastings St.,Chelsea Inn,,Downtown Eastside / Chinatown / Gastown / Strathcona,49.2820196805095,-123.105696810891,Yahya Nickpour - 0927000 BC LTD,Private,Private,Private,28,Open,address
+100,35 W Hastings St.,Palace Hotel,37 W Hastings St.,Downtown Eastside / Chinatown / Gastown / Strathcona,49.2820413355145,-123.105815790959,Soterra - Laurelwood Ventures Inc,Private,Private,Private,32,Open,building name
+101,74 W Hastings St.,Grand Union Hotel,78 W Hastings St.,Downtown Eastside / Chinatown / Gastown / Strathcona,49.2816437772555,-123.106849962074,Jackie Hammer,Private,Private,Private,40,Open,address
+102,106 W Hastings St.,Argyle Hotel/argyl E House,"100, 102 & 104 W Hastings St.; 415, 419, 421, 423 & 435 Abbott St.",Downtown Eastside / Chinatown / Gastown / Strathcona,49.2817678812653,-123.107533103642,,,,,,,unmatched
+103,116 W Hastings St.,Golden Crown Hotel,118 & 120 W Hastings St.,Downtown Eastside / Chinatown / Gastown / Strathcona,49.2818422352717,-123.10794142538,116 WEST HASTINGS HOLDINGS LTD,Private,Private,Private,30,Open,address
+104,404 Hawks St.,Rice Block,800 & 802 E Hastings St.,Downtown Eastside / Chinatown / Gastown / Strathcona,49.2808772534842,-123.086924702262,BCH,Atira Property Managem,Non-Profit,Government,38,Open,building name
+105,420 Hawks St.,,,Downtown Eastside / Chinatown / Gastown / Strathcona,49.2807097022635,-123.086931550415,Andrew Charney,Private,Private,Private,5,Open,building name
+106,209 Heatley St.,Harbourfront Hostel,686 Powell St.,Downtown Eastside / Chinatown / Gastown / Strathcona,49.282748802465,-123.089704778113,,,,,,,unmatched
+107,407 & 417 Heatley Ave. ; 684 E Hastings St.,Heatley Apartments,"688, 692, 694 & 696 E Hastings St.;  409 & 419 Heatley Ave.",Downtown Eastside / Chinatown / Gastown / Strathcona,49.2808450700827,-123.089847352723,,,,,,,unmatched
+108,1119 Hornby St.,Murray Hotel,1117 Hornby St.,Downtown South,49.2793988794687,-123.127248140252,Kenstone Properties Ltd,Atira Property Managem,Non-Profit,Private,105,Open,building name
+109,306 Jackson Ave.,B.c. Rooms/jacks On Rooms,322 Jackson Ave.; 500 & 508 E Cordova St.,Downtown Eastside / Chinatown / Gastown / Strathcona,49.2819080694239,-123.09315889932,"Ging, Huie S (15 year lease to Chris Wall)",Private,Private,Private,55,Open,address
+110,218 Keefer St.,Keefer Rooms,222 Keefer St.,Downtown Eastside / Chinatown / Gastown / Strathcona,49.2792034068084,-123.098898010896,Chris Wall - 1166605 B.C. Ltd,Private,Private,Private,45,Open,address
+111,240 Keefer St.,Lung Jen Benevolent,,Downtown Eastside / Chinatown / Gastown / Strathcona,49.2792005317519,-123.098578977083,LUNG JEN BENEVOLENT SOCIETY,Private,Private,Chinese Society,5,Open,address
+112,542 Keefer St.,,,Downtown Eastside / Chinatown / Gastown / Strathcona,49.2790919733144,-123.092498307851,TSUNG TSIN ASSOCIATION (HAKKA),Private,Private,Chinese Society,6,Open,address
+113,558 Keefer St.,Keefer Lodge,560 Keefer St.,Downtown Eastside / Chinatown / Gastown / Strathcona,49.2790852984117,-123.092185503487,Lookout Housing and Health Society,Lookout,Non-Profit,Non-Profit,15,Open,address
+114,727 Keefer St.,,,Downtown Eastside / Chinatown / Gastown / Strathcona,49.2795308934843,-123.088889348667,Keefer Apartments Ltd,Private,Private,Private,14,Open,address
+115,812 Keefer St.,,,Downtown Eastside / Chinatown / Gastown / Strathcona,49.278979080262,-123.086854250469,"Liu, Ly; Low, Lai F Chung Vllage Chung Shan Kwa",nPrivate,Pri vate,Private,12,Open,address
+116,117 Main St.,Main Hotel/rooms,119 Main St.,Downtown Eastside / Chinatown / Gastown / Strathcona,49.2837530910744,-123.100001134024,Betty Wu (owner) Shun Shi Co Ltd.,Private,Private,Private,28,Open,address
+117,205 Main St.,No. 5 Orange,203 Main St.,Downtown Eastside / Chinatown / Gastown / Strathcona,49.2830291890182,-123.100033230814,Sentinel Peak Holdings Ltd,Private,Private,Private,20,Open,building name
+118,235 Main St.,Jubilee Rooms,"233, 237 & 239 Main St.",Downtown Eastside / Chinatown / Gastown / Strathcona,49.2826432701404,-123.100049910652,BCH,Raincity,Non-Profit,Government,77,Open,address
+119,172 E. Cordova St.,Jay Rooms,305 Main St.; E Cordova St.,Downtown Eastside / Chinatown / Gastown / Strathcona,49.2821592300736,-123.100070926835,Mark Shieh - Happy Harvest Inc,Atira Women's Resourc,N on-Profit,Private,11,Open,address
+120,307 Main St.,Vet's Rooms,309 & 311 Main St.,Downtown Eastside / Chinatown / Gastown / Strathcona,49.2820812547566,-123.10007439716,Mark Shieh - Happy Harvest Inc,Private,Private,Private,9,Open,address
+121,507 Main St.,Pacific Rooms,509 Main St.,Downtown Eastside / Chinatown / Gastown / Strathcona,49.280115054318,-123.10016066423,Shun Chi Co LTD,Private,Private,Private,31,Open,address
+122,796 Main St.,Creekside Students Residences,,Downtown Eastside / Chinatown / Gastown / Strathcona,49.277796107274,-123.099340508552,Bonnis Development Main Inc,Private,Private,Private,24,Open,address
+123,917 Main St.,Cobalt Hotel,915 Main St.,Downtown Eastside / Chinatown / Gastown / Strathcona,49.2765179261019,-123.100433733298,Sahota - Northstar Internation Motor Hotel Ltd,Private,Private,Private,88,Open,building name
+124,928 Main St.,Old American Hotel,930 Main St.,Downtown Eastside / Chinatown / Gastown / Strathcona,49.2762571526626,-123.099458831733,BCH,BCH,Government,Government,42,Open,address
+125,956 Main St.,Thorton Park Hotel,958 Main St.,Downtown Eastside / Chinatown / Gastown / Strathcona,49.275882744985,-123.099475423633,BCH,BCH,Government,Government,23,Open,address
+126,1012 Main St.,Station Hotel,1014 Main St.,Downtown Eastside / Chinatown / Gastown / Strathcona,49.2754720926525,-123.099493642836,BCH,BCH,Government,Government,31,Open,address
+127,1038 Main St.,Ivanhoe Hotel,,Downtown Eastside / Chinatown / Gastown / Strathcona,49.2751300623154,-123.099508712277,Golden Sound Holdings Ltd,Private,Private,Private,102,Open,address
+128,100 E Pender St.,New Sun Ah Hotel,102 E Pender St.,Downtown Eastside / Chinatown / Gastown / Strathcona,49.2801734168147,-123.102117843841,LUNG KONG KUNG SHAW LTD,Private,Private,Chinese Society,45,Open,address
+129,110 E Pender St.,Chinese Freemasons,112 & 116 E Pender St.,Downtown Eastside / Chinatown / Gastown / Strathcona,49.2801685217657,-123.101855939895,VAN HONG DART REALTY LTD,Private,Private,Chinese Society,3,Open,address
+130,137 E Pender St.,Asia Hotel,139 E Pender St.,Downtown Eastside / Chinatown / Gastown / Strathcona,49.2806669245514,-123.100943389798,,,,,,,unmatched
+131,228 E Pender St.,,230 E Pender St.,Downtown Eastside / Chinatown / Gastown / Strathcona,49.2801140231673,-123.098851647902,Steve Lippman - 228 E Pender Holdings Ltd,Private,Private,Private,23,Open,address
+132,258 E Pender St.,May Wah Hotel,"254, 256, 260,& 262 E Pender St.",Downtown Eastside / Chinatown / Gastown / Strathcona,49.2801025977413,-123.098223420822,Vancouver Chinatown Foundation For Communty R,Private,Private,Non-Profit,120,Open,building name
+133,300 E Pender St.,China Villa,,Downtown Eastside / Chinatown / Gastown / Strathcona,49.2800562798079,-123.096518415188,CHRIST CHURCH OF CHINA,Private,Private,Non-Profit,51,Open,address
+134,349 E Pender St.,,359 E Pender St.,Downtown Eastside / Chinatown / Gastown / Strathcona,49.2805738078005,-123.096025790927,Andrew Charney,Private,Private,Private,5,Open,building name
+135,431 E Pender St.,"Pine Crane
+Villa",,Downtown Eastside / Chinatown / Gastown / Strathcona,49.2805480038742,-123.094599939057,Pender Lodge Holdings Ltd,Private,Private,Private,30,Open,address
+136,575 E Pender St.,Arlington Rooms,577 E Pender St.,Downtown Eastside / Chinatown / Gastown / Strathcona,49.2805002580574,-123.091914567671,Chris Wall - 1186832 BC Ltd,Private,Private,Private,29,Open,address
+137,832 E Pender St.,Ham Apartments,836 E Pender St.,Downtown Eastside / Chinatown / Gastown / Strathcona,49.2798755222985,-123.086394508837,Keefer Hawks Properties Ltd.,Private,Private,Private,18,Open,address
+138,853 E Pender St.,Rose Garden Co-Op,,Downtown Eastside / Chinatown / Gastown / Strathcona,49.2803875486522,-123.086106638534,ROSE GARDEN COOPERATIVE HOUSING SOCIE,Rose Garden Coop,,Private,54,Open,address
+139,31 W Pender St.,Pender Hotel,,Downtown Eastside / Chinatown / Gastown / Strathcona,49.281101238303,-123.10603667694,,,,,,,unmatched
+140,81 W Pender St.,Arco Hotel,83 W Pender St.,Downtown Eastside / Chinatown / Gastown / Strathcona,49.2812500247523,-123.106875641456,BCH,Atira Property Managem,Non-Profit,Government,63,Open,address
+141,165 W Pender St.,Avalon Hotel / Rooms,"163 & 167 W Pender St., 175 W. Pender St.",Downtown Eastside / Chinatown / Gastown / Strathcona,49.28164648142,-123.10905742487,Chris Wall - 1235922 BC Ltd,Private,Private,Private,85,Open,address
+142,429 W Pender St.,Park Hotel Apartments,433 W Pender St.,Downtown Eastside / Chinatown / Gastown / Strathcona,49.283281105169,-123.112164950546,BCH,Atira Property Managem,Non-Profit,Government,50,Open,address
+143,620 W Pender St.,Pender Place Hotel,622 W Pender St.,Downtown Core,49.2840753535323,-123.114501986647,Amacon - 620 West Pender Holdings Ltd,Private,Private,Private,46,Open,address
+144,43 Powell St.,Europe Hotel,"41,45 & 49 Powell St.",Downtown Eastside / Chinatown / Gastown / Strathcona,49.2834347308828,-123.103368939559,BCH,Atira Property Managem,Non-Profit,Government,84,Open,address
+145,55 Powell St.,Grand Trunk Rooms,,Downtown Eastside / Chinatown / Gastown / Strathcona,49.2834529461145,-123.102810347051,Steve Lippman - 55 Powel Street Holdings Ltd,Private,Private,Private,25,Open,address
+146,124 Powell St.,Hampton Hotel,122 Powell St.,Downtown Eastside / Chinatown / Gastown / Strathcona,49.2829640403907,-123.101314183767,MPA Motivation Power & Achievement Society,MPA,Non-Profit,Non-Profit,52,Open,address
+147,134 Powell St.,Lucky Lodge,132 & 136 Powell St.,Downtown Eastside / Chinatown / Gastown / Strathcona,49.2829581996659,-123.10100033499,Laudisio - 0750062 BC Ltd,Private,Private,Private,57,Open,building name
+148,259 Powell St.,York Rooms,261 Powell St.,Downtown Eastside / Chinatown / Gastown / Strathcona,49.2834203612982,-123.098084542127,Chris Wall - 0921667 BC Ltd,Private,Private,Private,34,Open,address
+149,316 Powell St.,Lion Hotel,318 & 324 Powell St.,Downtown Eastside / Chinatown / Gastown / Strathcona,49.2828876400178,-123.097180412342,Abdul Abdollahi - 0781178 BC Ltd,Lookout,Non-Profit,Private,76,Open,address
+150,326 Powell St.,King Rooms,328 Powell St.,Downtown Eastside / Chinatown / Gastown / Strathcona,49.2828836789184,-123.096971104749,"Cheng, Hink K",Private,Private,Private,36,Open,address
+151,346 Powell St.,Centennial Rooms,"342,344,348 & 350 Powell St.",Downtown Eastside / Chinatown / Gastown / Strathcona,49.282875665933,-123.096552149347,0773184 BC LTD,,,Private,13,Closed,address
+152,376 Powell St.,Sakura-So,374  Powell St.,Downtown Eastside / Chinatown / Gastown / Strathcona,49.2828649042854,-123.095975930491,Lookout Housing and Health Society,Lookout,Non-Profit,Non-Profit,38,Open,address
+153,390 Powell St.,New World Hotel,"394,396 & 398 Powell St.; 211 & 215 Dunlevy Ave.",Downtown Eastside / Chinatown / Gastown / Strathcona,49.2828579234683,-123.095609472401,,,,,,,unmatched
+154,401 Powell St.,Marr Hotel,403 Powell St.,Downtown Eastside / Chinatown / Gastown / Strathcona,49.2833523890773,-123.095050438374,,,,,,,unmatched
+155,437 Powell St.,Ming Sung Reading Rooms,439 & 441 Powell St.,Downtown Eastside / Chinatown / Gastown / Strathcona,49.2833495729784,-123.094316516162,MING SUN BENEVOLENTSOCIETY,Private,Private,Chinese Society,8,Closed,address
+156,556 Powell St.,Powell Rooms,558 Powell St.,Downtown Eastside / Chinatown / Gastown / Strathcona,49.2827915873347,-123.092022002046,Deborah Jane Harden & Robert Wiliam Harden,Atira Property Managem,Non-Profit,Private,22,Open,address
+157,566 Powell St.,Phoenix Apts,,Downtown Eastside / Chinatown / Gastown / Strathcona,49.2827896023407,-123.091917121889,McNair Park Investments,Atira Property Managem,Non-Profit,Private,12,Open,address
+158,568 Powell St.,Hampton Rooms,,Downtown Eastside / Chinatown / Gastown / Strathcona,49.2827877068243,-123.091812695427,Mario Laudisio & Gianni Laudisio,Private,Private,Private,17,Open,address
+160,215 Princess Ave.,Princess Lodge,"578, 580 & 582 Powell St.",Downtown Eastside / Chinatown / Gastown / Strathcona,49.2827847735745,-123.091655885512,Raincty Housing And Support Society,Raincity,Non-Profit,Non-Profit,46,Open,address
+161,230 Princess Ave.,Harbour Rooms,,Downtown Eastside / Chinatown / Gastown / Strathcona,49.2825121108729,-123.091181567976,1085125 BC Ltd,Private,Private,Private,12,Open,address
+162,236 Princess Ave.,,,Downtown Eastside / Chinatown / Gastown / Strathcona,49.2824287396414,-123.09118526915,Andrew Charney,Private,Private,Private,5,Open,building name
+163,553 Prior St.,Hing Mee Society,,Downtown Eastside / Chinatown / Gastown / Strathcona,49.2768895925919,-123.092384223844,HING MEE SOCIETY OF VANCOUVER,Private,Private,Chinese Society,6,Open,address
+164,518 Richards St.,Marble Arch Hotel,,Downtown Core,49.2828027902902,-123.11322929755,BCH,Atira Property Managem,Non-Profit,Government,150,Open,address
+165,1203 Seymour St.,Canadian Hotel,612 Davie St.,Downtown South,49.276531949528,-123.125547762464,Shirley Su Yi & Tai Cheun Lam & Yuet Ha Cheung,Private,Private,Private,26,Closed,address
+166,716 Smithe St.,Gresham,901 Granville St.; 722 Smithe St.,Downtown South,49.2803959815857,-123.121900676812,COV,COV,Government,Government,41,Open,address
+167,320 Union St.,,,Downtown Eastside / Chinatown / Gastown / Strathcona,49.2773341385904,-123.09634316548,Sandra Bonten,,,Private,7,Closed,address
+168,406 Union St.,Low Young Court,408 & 410 Union St.,Downtown Eastside / Chinatown / Gastown / Strathcona,49.2774537120259,-123.095304723239,0950327 BC Ltd - Mike Tanasichuk,Private,Private,Private,15,Open,address
+169,468 Union St.,Lucky Rooms,,Downtown Eastside / Chinatown / Gastown / Strathcona,49.2772982943986,-123.094002512865,0853871 BC Ltd (Khai Van Phung),Private,Private,Private,26,Open,building name
+170,102 Water St.,Winter's Residence,"104 & 108 Water St.; 203, 205, 207, 209, 219 & 221 Abbott St.",Downtown Eastside / Chinatown / Gastown / Strathcona,49.2836555773082,-123.10676496389,,,,,,,unmatched
+171,110 Water St.,Gastown Hotel,,Downtown Eastside / Chinatown / Gastown / Strathcona,49.2836919056644,-123.106964594706,BCH,Atira Property Managem,Non-Profit,Government,95,Open,address
+172,122 Water St.,Colonial Residence,114 Water St.,Downtown Eastside / Chinatown / Gastown / Strathcona,49.2837162446379,-123.107097304399,Peter Plett - Colonial Enterprises Ltd,Atira Property Managem,Non-Profit,Private,140,Open,building name

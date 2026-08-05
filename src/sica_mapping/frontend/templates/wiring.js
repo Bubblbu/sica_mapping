@@ -5,6 +5,7 @@
     filterConfig: '$filter_config_url',
     markerMetadata: '$marker_metadata_url',
     buildingData: '$building_records_url',
+    rezoningMetadata: '$rezoning_metadata_url',
   };
 
   function fetchJson(url) {
@@ -16,18 +17,28 @@
     });
   }
 
+  function fetchJsonOptional(url) {
+    if (!url) return Promise.resolve(null);
+    return fetchJson(url).catch(function(err) {
+      console.warn('Optional data failed to load', url, err);
+      return null;
+    });
+  }
+
   let filterConfig = {};
   let markerMetadata = [];
   let buildingData = {};
   let buildingRecords = {};
   let buildingColumnOrder = [];
+  let rezoningMarkerMetadata = [];
 
-  function assignLoadedData(filters, metadata, buildings) {
+  function assignLoadedData(filters, metadata, buildings, rezoningMetadata) {
     filterConfig = filters || {};
     markerMetadata = Array.isArray(metadata) ? metadata : [];
     buildingData = buildings || {};
     buildingRecords = (buildingData && buildingData.records) || {};
     buildingColumnOrder = (buildingData && Array.isArray(buildingData.columns)) ? buildingData.columns.slice() : [];
+    rezoningMarkerMetadata = Array.isArray(rezoningMetadata) ? rezoningMetadata : [];
   }
   function wireUp() {
     try {
@@ -35,6 +46,8 @@
       const layerVTU = window["$layer_vtu_var"] || null;
       const layerNon = window["$layer_non_var"] || null;
       const layerNeighbourhoods = window["$layer_neighbourhoods_var"] || null;
+      const layerSroHousing = window["$layer_sro_housing_var"] || null;
+      const layerRezoning = window["$layer_rezoning_var"] || null;
       const mapInstance = (layerBlocks && layerBlocks._map) || (layerVTU && layerVTU._map) || (layerNon && layerNon._map) || null;
 
       if (!layerBlocks || typeof layerBlocks.eachLayer !== 'function') {
@@ -46,6 +59,7 @@
       window.buildingIndex = {};
       window.ownerIndex = {};
       window.hoodIndex = {};
+      window.rezoningIndex = {};
       const BASE_ZOOM = 14;
       // Thin light stroke so overlapping markers read as distinct dots instead
       // of blurring into solid blobs at dense blocks (option 1).
@@ -351,6 +365,32 @@
         });
       }
 
+      function applyRezoningMetadata() {
+        if (!Array.isArray(rezoningMarkerMetadata)) return;
+        rezoningMarkerMetadata.forEach(function(meta) {
+          if (!meta) return;
+          var markerVar = meta.marker_var;
+          if (!markerVar) return;
+          var marker = window[String(markerVar)];
+          if (!marker) return;
+          marker._statusGroup = meta.status_group;
+          window.rezoningIndex[String(markerVar)] = marker;
+        });
+      }
+
+      function applyRezoningFilter() {
+        if (!Array.isArray(rezoningMarkerMetadata)) return;
+        var showOpen = vizRezoningOpenChk ? vizRezoningOpenChk.checked !== false : true;
+        var showClosed = vizRezoningClosedChk ? vizRezoningClosedChk.checked !== false : true;
+        rezoningMarkerMetadata.forEach(function(meta) {
+          if (!meta) return;
+          var marker = window.rezoningIndex[String(meta.marker_var)];
+          if (!marker) return;
+          var visible = meta.status_group === 'closed' ? showClosed : showOpen;
+          setMarkerVisibility(marker, visible);
+        });
+      }
+
       function toggleLayerVisibility(layer, show) {
         if (!mapInstance || !layer) return;
         const hasLayer = mapInstance.hasLayer(layer);
@@ -519,6 +559,7 @@
       sendBlocksToBack();
 
       applyMarkerMetadata();
+      applyRezoningMetadata();
       const markerCount = Object.keys(window.buildingIndex).length;
       if (!markerCount) {
         throw new Error('Building markers not ready');
@@ -655,6 +696,9 @@
       const vizBlocksChk = document.getElementById('viz-show-blocks');
       const hideEmptyBlocksChk = document.getElementById('viz-hide-empty-blocks');
       const vizNeighbourhoodsChk = document.getElementById('viz-show-neighbourhoods');
+      const vizSroHousingChk = document.getElementById('viz-show-sro-housing');
+      const vizRezoningOpenChk = document.getElementById('viz-show-rezoning-open');
+      const vizRezoningClosedChk = document.getElementById('viz-show-rezoning-closed');
       const tableSearchInput = document.getElementById('owner-search');
       const statusCells = {
         total: {
@@ -1571,6 +1615,21 @@
       } else {
         toggleLayerVisibility(layerNeighbourhoods, true);
       }
+      if (vizSroHousingChk) {
+        toggleLayerVisibility(layerSroHousing, vizSroHousingChk.checked !== false);
+        vizSroHousingChk.addEventListener('change', function() {
+          toggleLayerVisibility(layerSroHousing, vizSroHousingChk.checked);
+        });
+      } else {
+        toggleLayerVisibility(layerSroHousing, true);
+      }
+      applyRezoningFilter();
+      if (vizRezoningOpenChk) {
+        vizRezoningOpenChk.addEventListener('change', applyRezoningFilter);
+      }
+      if (vizRezoningClosedChk) {
+        vizRezoningClosedChk.addEventListener('change', applyRezoningFilter);
+      }
 
       if (resetBtn) {
         resetBtn.addEventListener('click', function() {
@@ -1598,6 +1657,13 @@
             vizNeighbourhoodsChk.checked = true;
             toggleLayerVisibility(layerNeighbourhoods, true);
           }
+          if (vizSroHousingChk) {
+            vizSroHousingChk.checked = true;
+            toggleLayerVisibility(layerSroHousing, true);
+          }
+          if (vizRezoningOpenChk) vizRezoningOpenChk.checked = true;
+          if (vizRezoningClosedChk) vizRezoningClosedChk.checked = true;
+          applyRezoningFilter();
           if (tableSearchInput) {
             tableSearchInput.value = '';
           }
@@ -1682,8 +1748,9 @@
       fetchJson(DATA_URLS.filterConfig),
       fetchJson(DATA_URLS.markerMetadata),
       fetchJson(DATA_URLS.buildingData),
+      fetchJsonOptional(DATA_URLS.rezoningMetadata),
     ]).then(function(results) {
-      assignLoadedData(results[0], results[1], results[2]);
+      assignLoadedData(results[0], results[1], results[2], results[3]);
     });
   }
 

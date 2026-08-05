@@ -215,6 +215,129 @@ def add_buildings_layers(m: folium.Map, pts_df):
     return layer_vtu, layer_non, layer_vtu_name, layer_non_name, marker_metadata
 
 
+def _cell(row, key: str) -> str:
+    val = row.get(key)
+    if val is None or (isinstance(val, float) and pd.isna(val)) or pd.isna(val):
+        return ""
+    return str(val).strip()
+
+
+SRO_HOUSING_COLOR = "#3182bd"
+
+_REZONING_STATUS_COLORS = {
+    "approved": "#2ca25f",
+    "rezoning": "#e6550d",
+    "upcoming": "#756bb1",
+}
+
+
+def _rezoning_status_group(status: str) -> str:
+    return "closed" if status.strip().lower() == "approved" else "open"
+
+
+def add_sro_housing_layer(m: folium.Map, df: pd.DataFrame) -> tuple[folium.FeatureGroup, str]:
+    """SRO/SRA hotel inventory — a single boolean overlay, no open/closed subtype."""
+    layer = folium.FeatureGroup(name="SRO/SRA Hotels", show=True, overlay=True)
+
+    for _, r in df.iterrows():
+        lat = r.get("latitude")
+        lon = r.get("longitude")
+        if pd.isna(lat) or pd.isna(lon):
+            continue
+        if _cell(r, "match_method").lower() == "unmatched":
+            continue
+
+        name = _cell(r, "building_name") or _cell(r, "address")
+        popup_html = f"<b>{escape(name)}</b><br>Address: {escape(_cell(r, 'address'))}<br>"
+        secondary = _cell(r, "secondary_address")
+        if secondary:
+            popup_html += f"Secondary: {escape(secondary)}<br>"
+        popup_html += (
+            f"Owner: {escape(_cell(r, 'owner'))}<br>"
+            f"Operator: {escape(_cell(r, 'operator'))}<br>"
+            f"Operator Group: {escape(_cell(r, 'operator_group'))}<br>"
+            f"Ownership Group: {escape(_cell(r, 'ownership_group'))}<br>"
+        )
+        rooms = _cell(r, "#_registered_rooms")
+        if rooms:
+            popup_html += f"Registered rooms: {escape(rooms)}<br>"
+        occupancy = _cell(r, "occupancy_status")
+        if occupancy:
+            popup_html += f"Occupancy: {escape(occupancy)}"
+
+        mk = folium.CircleMarker(
+            location=[float(lat), float(lon)],
+            radius=4.5,
+            fill=True,
+            fill_opacity=0.75,
+            color="#ffffff",
+            weight=0.6,
+            fill_color=SRO_HOUSING_COLOR,
+        ).add_child(folium.Popup(popup_html, max_width=320))
+        layer.add_child(mk)
+
+    layer.add_to(m)
+    return layer, layer.get_name()
+
+
+def add_rezoning_layer(
+    m: folium.Map, df: pd.DataFrame
+) -> tuple[folium.FeatureGroup, str, list[dict[str, object]]]:
+    """Rezoning applications — one FeatureGroup covering two filterable subsets
+    (open vs closed, derived from Status), so each marker's classification is
+    returned for client-side per-marker filtering.
+    """
+    layer = folium.FeatureGroup(name="Rezoning Applications", show=True, overlay=True)
+    marker_metadata: list[dict[str, object]] = []
+
+    for _, r in df.iterrows():
+        lat = r.get("latitude")
+        lon = r.get("longitude")
+        if pd.isna(lat) or pd.isna(lon):
+            continue
+
+        status = _cell(r, "status")
+        status_group = _rezoning_status_group(status)
+        color = _REZONING_STATUS_COLORS.get(status.lower(), "#999999")
+        name = _cell(r, "name")
+
+        popup_html = f"<b>{escape(name)}</b><br>Status: {escape(status)}<br>"
+        category = _cell(r, "category")
+        if category:
+            popup_html += f"Category: {escape(category)}<br>"
+        status_detail = _cell(r, "status_detail")
+        if status_detail:
+            popup_html += f"Detail: {escape(status_detail)}<br>"
+        link = _cell(r, "link")
+        if link:
+            popup_html += (
+                f'<a href="{escape(link)}" target="_blank" rel="noopener">Source</a>'
+            )
+
+        mk = folium.CircleMarker(
+            location=[float(lat), float(lon)],
+            radius=4.5,
+            fill=True,
+            fill_opacity=0.75,
+            color="#ffffff",
+            weight=0.6,
+            fill_color=color,
+        ).add_child(folium.Popup(popup_html, max_width=320))
+        layer.add_child(mk)
+
+        marker_metadata.append(
+            {
+                "marker_var": mk.get_name(),
+                "status_group": status_group,
+                "base_color": color,
+                "base_radius": 4.5,
+            }
+        )
+
+    layer.add_to(m)
+    return layer, layer.get_name(), marker_metadata
+
+
 def sidebar_html(
     buildings_rows: str,
     blocks_rows: str,
@@ -239,6 +362,9 @@ def wiring_js(
     filter_config_url: str,
     marker_metadata_url: str,
     building_records_url: str,
+    layer_sro_housing_var: str | None = None,
+    layer_rezoning_var: str | None = None,
+    rezoning_metadata_url: str | None = None,
 ) -> str:
     return WIRING_JS_TEMPLATE.safe_substitute(
         blocks_layer_var=blocks_layer_var,
@@ -248,6 +374,9 @@ def wiring_js(
         filter_config_url=filter_config_url,
         marker_metadata_url=marker_metadata_url,
         building_records_url=building_records_url,
+        layer_sro_housing_var=layer_sro_housing_var or "",
+        layer_rezoning_var=layer_rezoning_var or "",
+        rezoning_metadata_url=rezoning_metadata_url or "",
     )
 
 

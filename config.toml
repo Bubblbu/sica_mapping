@@ -7,6 +7,8 @@ block_numbers = "data/block-numbers.csv"
 local_area_boundary = "data/local-area-boundary.csv"
 vtu = "data/membership_full.csv"
 sica_core_db = "data/sica_core.db"
+sro_housing = "data/sra_housing_combined.csv"
+rezoning_applications = "data/rezoning_applications.csv"
 
 [options]
 out = "index.html"
