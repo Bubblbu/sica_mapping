@@ -11,7 +11,7 @@ import pandas as pd
 import numpy as np
 from shapely.geometry import shape
 
-from .core import setup_logging, logger, read_any_csv, normalize_cols
+from .core import setup_logging, logger
 from .data import (
     run_data_pipeline,
     cached_data_exists,
@@ -19,6 +19,7 @@ from .data import (
     load_cached_data,
     blocks_feature_collection,
     local_area_boundaries_feature_collection,
+    match_overlays,
     buildings_table,
     blocks_table,
     landlords_table,
@@ -27,13 +28,13 @@ from .data import (
     rows_blocks,
     rows_landlords,
     rows_neighbourhoods,
+    rows_synthetic,
 )
 from .frontend import (
     add_blocks_layer,
     add_buildings_layers,
     add_neighbourhoods_layer,
-    add_sro_housing_layer,
-    add_rezoning_layer,
+    add_unmatched_overlay_layers,
     sidebar_html,
     wiring_js,
     legends_html,
@@ -174,36 +175,37 @@ def build_map(args) -> None:
         tiles=args.tiles,
         prefer_canvas=True,
     )
+    # local_area_boundary_fc loads before match_overlays() — needed for its
+    # point-in-polygon local-area lookup for unmatched overlay records — and
+    # match_overlays() enriches pts_df before anything downstream (marker
+    # rendering, table building) reads housing_type/rezoning_* columns.
+    neighbourhoods_fc = local_area_boundaries_feature_collection(args.local_area_boundary)
+    overlay_result = match_overlays(
+        pts_df,
+        coops_path=getattr(args, "coops", None),
+        sro_path=getattr(args, "sro_housing", None),
+        rezoning_path=getattr(args, "rezoning_applications", None),
+        local_area_boundary_fc=neighbourhoods_fc,
+    )
+    pts_df = overlay_result.pts_df
+
     fc = blocks_feature_collection(blocks_merged)
     blocks_geo = add_blocks_layer(m, fc)
+    neighbourhoods_geo = add_neighbourhoods_layer(m, neighbourhoods_fc)
+    # Unmatched overlay markers are added to the SAME shared canvas
+    # (prefer_canvas=True) as buildings, and canvas z-order is just
+    # insertion order — so this needs to run BEFORE add_buildings_layers(),
+    # not after, or every unmatched marker paints (and steals clicks) on
+    # top of every building marker. wiring.js's sendBuildingsToFront() is
+    # the runtime backstop for when a checkbox toggle re-inserts buildings
+    # anyway (see its docstring for why that alone isn't enough).
+    _unmatched_layers, _unmatched_layer_names, unmatched_marker_metadata = (
+        add_unmatched_overlay_layers(m, overlay_result.unmatched_records)
+    )
     _layer_vtu, _layer_non, layer_vtu_name, layer_non_name, marker_metadata = (
         add_buildings_layers(m, pts_df)
     )
-    neighbourhoods_fc = local_area_boundaries_feature_collection(args.local_area_boundary)
-    neighbourhoods_geo = add_neighbourhoods_layer(m, neighbourhoods_fc)
-
-    layer_sro_housing_name: str | None = None
-    sro_housing_path = getattr(args, "sro_housing", None)
-    if sro_housing_path and Path(sro_housing_path).exists():
-        sro_df = normalize_cols(read_any_csv(sro_housing_path))
-        _sro_layer, layer_sro_housing_name = add_sro_housing_layer(m, sro_df)
-        logger.info("Loaded SRO/SRA housing overlay from %s", sro_housing_path)
-    elif sro_housing_path:
-        logger.warning("SRO housing CSV not found, skipping overlay: %s", sro_housing_path)
-
-    layer_rezoning_name: str | None = None
-    rezoning_marker_metadata: list[dict[str, Any]] = []
-    rezoning_path = getattr(args, "rezoning_applications", None)
-    if rezoning_path and Path(rezoning_path).exists():
-        rezoning_df = normalize_cols(read_any_csv(rezoning_path))
-        _rezoning_layer, layer_rezoning_name, rezoning_marker_metadata = add_rezoning_layer(
-            m, rezoning_df
-        )
-        logger.info("Loaded rezoning applications overlay from %s", rezoning_path)
-    elif rezoning_path:
-        logger.warning(
-            "Rezoning applications CSV not found, skipping overlay: %s", rezoning_path
-        )
+    marker_metadata.extend(unmatched_marker_metadata)
 
     if bounds_info and all(
         k in bounds_info for k in ("lat_min", "lon_min", "lat_max", "lon_max")
@@ -227,10 +229,13 @@ def build_map(args) -> None:
     k_tbl = blocks_table(blocks_merged)
     l_tbl = landlords_table(pts_df)
     n_tbl = neighbourhoods_table(pts_df)
+    buildings_rows_html = (
+        rows_buildings(b_tbl) + "\n" + rows_synthetic(overlay_result.unmatched_records)
+    )
     m.get_root().html.add_child(
         folium.Element(
             sidebar_html(
-                rows_buildings(b_tbl),
+                buildings_rows_html,
                 rows_blocks(k_tbl),
                 rows_landlords(l_tbl),
                 rows_neighbourhoods(n_tbl),
@@ -254,6 +259,18 @@ def build_map(args) -> None:
             b_key = str(b_id)
         building_records_map[b_key] = cleaned
 
+    for rec in overlay_result.unmatched_records:
+        building_records_map[str(rec["synthetic_id"])] = _sanitise_record(
+            {
+                "b_id": rec["synthetic_id"],
+                "address": rec.get("address"),
+                "local_area": rec.get("local_area"),
+                "housing_type": rec.get("housing_type"),
+                "rezoning_status": rec.get("rezoning_status"),
+                "source": rec.get("source"),
+            }
+        )
+
     building_records_payload = {
         "columns": [str(col) for col in b_tbl.columns],
         "records": building_records_map,
@@ -262,7 +279,6 @@ def build_map(args) -> None:
     filter_config_name = f"{asset_base}_filter_config.json"
     marker_metadata_name = f"{asset_base}_marker_metadata.json"
     building_records_name = f"{asset_base}_building_records.json"
-    rezoning_metadata_name = f"{asset_base}_rezoning_metadata.json"
 
     (output_dir / filter_config_name).write_text(
         json.dumps(filter_cfg, separators=(",", ":")),
@@ -276,10 +292,6 @@ def build_map(args) -> None:
         json.dumps(building_records_payload, separators=(",", ":")),
         encoding="utf-8",
     )
-    (output_dir / rezoning_metadata_name).write_text(
-        json.dumps(rezoning_marker_metadata, separators=(",", ":")),
-        encoding="utf-8",
-    )
 
     m.get_root().html.add_child(
         folium.Element(
@@ -291,9 +303,6 @@ def build_map(args) -> None:
                 filter_config_name,
                 marker_metadata_name,
                 building_records_name,
-                layer_sro_housing_var=layer_sro_housing_name,
-                layer_rezoning_var=layer_rezoning_name,
-                rezoning_metadata_url=rezoning_metadata_name,
             )
         )
     )

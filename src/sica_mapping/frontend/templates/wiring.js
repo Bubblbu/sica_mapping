@@ -5,7 +5,6 @@
     filterConfig: '$filter_config_url',
     markerMetadata: '$marker_metadata_url',
     buildingData: '$building_records_url',
-    rezoningMetadata: '$rezoning_metadata_url',
   };
 
   function fetchJson(url) {
@@ -17,28 +16,25 @@
     });
   }
 
-  function fetchJsonOptional(url) {
-    if (!url) return Promise.resolve(null);
-    return fetchJson(url).catch(function(err) {
-      console.warn('Optional data failed to load', url, err);
-      return null;
-    });
-  }
-
   let filterConfig = {};
   let markerMetadata = [];
   let buildingData = {};
   let buildingRecords = {};
   let buildingColumnOrder = [];
-  let rezoningMarkerMetadata = [];
+  // wireUp() legitimately fails a few times at startup (Folium's layers
+  // aren't attached to window/the map yet — see the "not ready" throws
+  // below) and silently retries, which is fine. But a *permanent* bug (e.g.
+  // a reference used before it's declared) throws every single time too,
+  // and was retrying forever with nothing printed anywhere — this counter
+  // gives up and logs loudly after a few seconds instead of hanging forever.
+  let wireUpAttempts = 0;
 
-  function assignLoadedData(filters, metadata, buildings, rezoningMetadata) {
+  function assignLoadedData(filters, metadata, buildings) {
     filterConfig = filters || {};
     markerMetadata = Array.isArray(metadata) ? metadata : [];
     buildingData = buildings || {};
     buildingRecords = (buildingData && buildingData.records) || {};
     buildingColumnOrder = (buildingData && Array.isArray(buildingData.columns)) ? buildingData.columns.slice() : [];
-    rezoningMarkerMetadata = Array.isArray(rezoningMetadata) ? rezoningMetadata : [];
   }
   function wireUp() {
     try {
@@ -46,8 +42,6 @@
       const layerVTU = window["$layer_vtu_var"] || null;
       const layerNon = window["$layer_non_var"] || null;
       const layerNeighbourhoods = window["$layer_neighbourhoods_var"] || null;
-      const layerSroHousing = window["$layer_sro_housing_var"] || null;
-      const layerRezoning = window["$layer_rezoning_var"] || null;
       const mapInstance = (layerBlocks && layerBlocks._map) || (layerVTU && layerVTU._map) || (layerNon && layerNon._map) || null;
 
       if (!layerBlocks || typeof layerBlocks.eachLayer !== 'function') {
@@ -59,16 +53,33 @@
       window.buildingIndex = {};
       window.ownerIndex = {};
       window.hoodIndex = {};
-      window.rezoningIndex = {};
       const BASE_ZOOM = 14;
       // Thin light stroke so overlapping markers read as distinct dots instead
-      // of blurring into solid blobs at dense blocks (option 1).
+      // of blurring into solid blobs at dense blocks (option 1). Per-marker
+      // overrides (housing-type rings) fall back to these via
+      // marker._strokeColor/_strokeWeight, set in applyMarkerMetadata().
       const MARKER_STROKE_COLOR = '#ffffff';
       const MARKER_STROKE_WEIGHT = 0.6;
+      // Must match layout.py's REZONING_BADGE_RADIUS.
+      const REZONING_BADGE_RADIUS = 3.0;
       let currentZoomScale = 1;
       let colorScalingEnabled = true;
       let blockColorScalingEnabled = true;
+      let blockColorMin = 0;
       let blockColorMax = 0;
+      let showSroChecked = true;
+      let showCoopChecked = true;
+      // Declared here (not down with the other filter-panel DOM refs) because
+      // syncMarkerAnnotations()/effectiveStrokeColor() — both called from
+      // applyZoomScaling(), which runs early during wireUp() — read these.
+      // Referencing a `const` before its declaration line throws (temporal
+      // dead zone), and since that throw happened inside wireUp()'s top-level
+      // try/catch, it was being silently swallowed and retried forever —
+      // filters and tab-switching never finished wiring up as a result.
+      const vizShowSroChk = document.getElementById('viz-show-sro');
+      const vizShowCoopChk = document.getElementById('viz-show-coop');
+      const vizRezoningOpenChk = document.getElementById('viz-show-rezoning-open');
+      const vizRezoningClosedChk = document.getElementById('viz-show-rezoning-closed');
 
       function computeZoomScale(zoom) {
         if (!Number.isFinite(zoom)) return currentZoomScale;
@@ -94,7 +105,13 @@
         } else if (!blockColorScalingEnabled || blockColorMax <= 0) {
           base = { weight:1, color:'#b8b8b8', fillOpacity:0.35, fillColor:'#f0f0f0' };
         } else {
-          const ratio = Math.max(0, Math.min(1, units / blockColorMax));
+          // Scale relative to the currently-visible blocks' own min/max (set by
+          // recomputeBlockColorScale()), not fixed dataset-wide bounds — so
+          // e.g. filtering to one neighbourhood re-stretches the hue range to
+          // that neighbourhood's least/most-dense blocks instead of leaving
+          // everything bunched at the low end of a city-wide scale.
+          const span = blockColorMax - blockColorMin;
+          const ratio = span > 0 ? Math.max(0, Math.min(1, (units - blockColorMin) / span)) : 1;
           const fill = (ratio <= 0.10) ? '#c7e9c0' :
                        (ratio <= 0.25) ? '#a1d99b' :
                        (ratio <= 0.50) ? '#74c476' :
@@ -104,6 +121,58 @@
         }
         layer._baseStyle = base;
         layer.setStyle(base);
+      }
+
+      // Recomputes the block color scale's min/max from whatever blocks are
+      // currently visible (not filtered out by the neighbourhood picker or
+      // other filters) and repaints them + the legend to match. Called once
+      // during initial wireUp (when nothing is filtered yet, so it reflects
+      // the whole dataset) and again at the end of every applyFilters() pass.
+      function recomputeBlockColorScale() {
+        let min = null;
+        let max = 0;
+        blockLayers.forEach(function(layer) {
+          if (layer._isFiltered) return;
+          if ((layer._blockBuildings || 0) <= 0) return;
+          const units = Number(layer._blockUnits);
+          if (!Number.isFinite(units)) return;
+          if (min === null || units < min) min = units;
+          if (units > max) max = units;
+        });
+        if (min === null) min = 0;
+        blockColorMin = min;
+        blockColorMax = max;
+        window.blockColorMin = blockColorMin;
+        window.blockColorMax = blockColorMax;
+        blockLayers.forEach(function(layer) {
+          if (layer._isFiltered) return;
+          resetBlockStyle(layer);
+        });
+        updateBlockLegendScale();
+      }
+
+      function updateBlockLegendScale() {
+        const scaleEl = document.getElementById('block-legend-scale');
+        const noteEl = document.getElementById('block-legend-note');
+        if (!scaleEl && !noteEl) return;
+        const min = blockColorMin;
+        const max = blockColorMax;
+        if (scaleEl) {
+          const fractions = [0, 0.2, 0.4, 0.6, 0.8, 1.0];
+          scaleEl.innerHTML = fractions.map(function(frac) {
+            const value = max > min ? Math.round(min + (max - min) * frac) : (frac === 1 ? max : min);
+            return '<span>' + value.toLocaleString() + '</span>';
+          }).join('');
+        }
+        if (noteEl) {
+          if (max <= 0) {
+            noteEl.textContent = 'No visible blocks with unit data.';
+          } else if (max === min) {
+            noteEl.textContent = 'All visible blocks have ' + max.toLocaleString() + ' units.';
+          } else {
+            noteEl.textContent = 'Color scaled to ' + min.toLocaleString() + '–' + max.toLocaleString() + ' units (visible blocks).';
+          }
+        }
       }
 
       function setBlockFiltered(blockId, filtered) {
@@ -168,6 +237,84 @@
         if (marker._isFiltered === undefined) {
           marker._isFiltered = false;
         }
+        if (marker._strokeColor === undefined || marker._strokeColor === null) {
+          marker._strokeColor = opts.color || MARKER_STROKE_COLOR;
+        }
+        if (marker._strokeWeight === undefined || marker._strokeWeight === null) {
+          marker._strokeWeight = (typeof opts.weight === 'number') ? opts.weight : MARKER_STROKE_WEIGHT;
+        }
+      }
+
+      // A building matching exactly one housing type has its OWN stroke
+      // overridden to that type's ring color (see add_buildings_layers in
+      // layout.py) — no separate marker. So unchecking "Show co-ops"/"Show
+      // SRO/SRA hotels" for that case means reverting the marker's own
+      // stroke back to the plain default, not hiding/showing a child object.
+      // marker._primaryHousingType (set in applyMarkerMetadata) records which
+      // type currently owns the stroke, so these two helpers are the single
+      // source of truth for what color/weight a marker's stroke should
+      // currently render as — used by every setStyle call site below instead
+      // of reading marker._strokeColor/_strokeWeight directly.
+      function effectiveStrokeColor(marker) {
+        if (!marker) return MARKER_STROKE_COLOR;
+        if ((marker._primaryHousingType === 'coop' && !showCoopChecked) ||
+            (marker._primaryHousingType === 'sro' && !showSroChecked)) {
+          return MARKER_STROKE_COLOR;
+        }
+        return marker._strokeColor || MARKER_STROKE_COLOR;
+      }
+
+      function effectiveStrokeWeight(marker) {
+        if (!marker) return MARKER_STROKE_WEIGHT;
+        if ((marker._primaryHousingType === 'coop' && !showCoopChecked) ||
+            (marker._primaryHousingType === 'sro' && !showSroChecked)) {
+          return MARKER_STROKE_WEIGHT;
+        }
+        return marker._strokeWeight || MARKER_STROKE_WEIGHT;
+      }
+
+      // Rings (extra housing-type halo) and the rezoning badge are separate
+      // child CircleMarkers, so — unlike the single-type stroke override
+      // above — they're shown/hidden by resizing to/from radius 0, mirroring
+      // how setMarkerVisibility treats a fully-filtered building marker.
+      // Called whenever a building's own visibility changes (from within
+      // setMarkerVisibility/applyZoomScaling) AND whenever the Housing
+      // Data/Rezoning checkboxes change (from applyHousingTypeFilter/
+      // applyRezoningFilter) — a no-op (single property check) for the
+      // ~5,000 markers that have neither.
+      function syncMarkerAnnotations(marker) {
+        if (!marker) return;
+        var buildingVisible = !marker._isFiltered;
+        if (marker._extraRings) {
+          marker._extraRings.forEach(function(r) {
+            if (!r || !r.marker) return;
+            var typeShown = r.housingType === 'coop' ? showCoopChecked : showSroChecked;
+            var visible = buildingVisible && typeShown;
+            if (typeof r.marker.setStyle === 'function') {
+              r.marker.setStyle({ opacity: visible ? 0.9 : 0 });
+            }
+            if (typeof r.marker.setRadius === 'function') {
+              r.marker.setRadius(visible ? getScaledRadius(marker) + 3.0 : 0);
+            }
+          });
+        }
+        if (marker._badge) {
+          var showOpen = vizRezoningOpenChk ? vizRezoningOpenChk.checked !== false : true;
+          var showClosed = vizRezoningClosedChk ? vizRezoningClosedChk.checked !== false : true;
+          var badgeShown = marker._badgeStatusGroup === 'closed' ? showClosed : showOpen;
+          var visible = buildingVisible && badgeShown;
+          if (typeof marker._badge.setStyle === 'function') {
+            marker._badge.setStyle({ fillOpacity: visible ? 0.9 : 0, opacity: visible ? 1 : 0 });
+          }
+          if (typeof marker._badge.setRadius === 'function') {
+            marker._badge.setRadius(visible ? REZONING_BADGE_RADIUS : 0);
+          }
+        }
+      }
+
+      function restyleMarkerStroke(marker) {
+        if (!marker || typeof marker.setStyle !== 'function') return;
+        marker.setStyle({ color: effectiveStrokeColor(marker), weight: effectiveStrokeWeight(marker) });
       }
 
       function highlightMarker(marker, on) {
@@ -184,8 +331,8 @@
             fillOpacity: Math.min(0.95, baseOpacity + 0.20),
             fillColor: baseColor
           } : {
-            weight: MARKER_STROKE_WEIGHT,
-            color: MARKER_STROKE_COLOR,
+            weight: effectiveStrokeWeight(marker),
+            color: effectiveStrokeColor(marker),
             fillOpacity: baseOpacity,
             fillColor: baseColor
           });
@@ -240,8 +387,8 @@
           var baseRadius = getScaledRadius(marker);
           if (typeof marker.setStyle === 'function') {
             marker.setStyle({
-              weight: MARKER_STROKE_WEIGHT,
-              color: MARKER_STROKE_COLOR,
+              weight: effectiveStrokeWeight(marker),
+              color: effectiveStrokeColor(marker),
               fillOpacity: baseOpacity,
               fillColor: marker._baseColor
             });
@@ -253,6 +400,7 @@
             highlightMarker(marker, true);
           }
         }
+        syncMarkerAnnotations(marker);
       }
 
       function setOwnerSelection(ownerKey, selected) {
@@ -336,6 +484,32 @@
           marker._units = Number.isFinite(unitsMeta) ? unitsMeta : 0;
           const yearMeta = Number(meta.year_built);
           marker._yearBuilt = Number.isFinite(yearMeta) ? yearMeta : null;
+
+          // Housing-type ring / rezoning badge / synthetic (unmatched-record)
+          // bookkeeping — see data.overlays.match_overlays and
+          // add_buildings_layers/add_unmatched_overlay_layers in layout.py.
+          marker._strokeColor = (typeof meta.stroke_color === 'string' && meta.stroke_color) || marker._strokeColor || MARKER_STROKE_COLOR;
+          marker._strokeWeight = (typeof meta.stroke_weight === 'number') ? meta.stroke_weight : (marker._strokeWeight || MARKER_STROKE_WEIGHT);
+          marker._housingType = meta.housing_type || '';
+          marker._primaryHousingType = meta.primary_housing_type || '';
+          marker._isSynthetic = !!meta.is_synthetic;
+          marker._source = meta.source || null;
+          marker._rezoningStatusGroup = meta.rezoning_status_group || null;
+          marker._extraRings = null;
+          if (Array.isArray(meta.extra_rings) && meta.extra_rings.length) {
+            marker._extraRings = meta.extra_rings
+              .map(function(er) {
+                return { housingType: er.housing_type, marker: window[String(er.marker_var)] };
+              })
+              .filter(function(r) { return !!r.marker; });
+          }
+          marker._badge = null;
+          marker._badgeStatusGroup = null;
+          if (meta.rezoning_badge_var) {
+            marker._badge = window[String(meta.rezoning_badge_var)];
+            marker._badgeStatusGroup = meta.rezoning_status_group || null;
+          }
+
           ensureMarkerBase(marker);
           updateMarkerColorAppearance(marker);
 
@@ -365,29 +539,32 @@
         });
       }
 
-      function applyRezoningMetadata() {
-        if (!Array.isArray(rezoningMarkerMetadata)) return;
-        rezoningMarkerMetadata.forEach(function(meta) {
-          if (!meta) return;
-          var markerVar = meta.marker_var;
-          if (!markerVar) return;
-          var marker = window[String(markerVar)];
+      // Housing type (SRO/co-op) and rezoning both have two parts to keep in
+      // sync on every checkbox change: (a) matched buildings' own ring/badge
+      // annotations (syncMarkerAnnotations, cheap — only markers that
+      // actually have a ring/badge do anything), and (b) standalone unmatched
+      // markers' own visibility, which — since they're now ordinary
+      // (synthetic) Buildings-table rows — is decided inside applyFilters()
+      // itself (see its data-synthetic/data-source handling) rather than a
+      // separate per-marker loop like the old rezoning-only mechanism this
+      // replaces.
+      function applyHousingTypeFilter() {
+        showSroChecked = vizShowSroChk ? vizShowSroChk.checked !== false : true;
+        showCoopChecked = vizShowCoopChk ? vizShowCoopChk.checked !== false : true;
+        applyFilters();
+        Object.keys(window.buildingIndex).forEach(function(key) {
+          var marker = window.buildingIndex[key];
           if (!marker) return;
-          marker._statusGroup = meta.status_group;
-          window.rezoningIndex[String(markerVar)] = marker;
+          if (marker._primaryHousingType) restyleMarkerStroke(marker);
+          if (marker._extraRings) syncMarkerAnnotations(marker);
         });
       }
 
       function applyRezoningFilter() {
-        if (!Array.isArray(rezoningMarkerMetadata)) return;
-        var showOpen = vizRezoningOpenChk ? vizRezoningOpenChk.checked !== false : true;
-        var showClosed = vizRezoningClosedChk ? vizRezoningClosedChk.checked !== false : true;
-        rezoningMarkerMetadata.forEach(function(meta) {
-          if (!meta) return;
-          var marker = window.rezoningIndex[String(meta.marker_var)];
-          if (!marker) return;
-          var visible = meta.status_group === 'closed' ? showClosed : showOpen;
-          setMarkerVisibility(marker, visible);
+        applyFilters();
+        Object.keys(window.buildingIndex).forEach(function(key) {
+          var marker = window.buildingIndex[key];
+          if (marker && marker._badge) syncMarkerAnnotations(marker);
         });
       }
 
@@ -537,13 +714,11 @@
           blockLayers.push(layer);
         }
       });
-      blockColorMax = blockLayers.reduce(function(max, layer) {
-        var units = Number(layer._blockUnits);
-        return Number.isFinite(units) ? Math.max(max, units) : max;
-      }, 0);
-      if (!Number.isFinite(blockColorMax) || blockColorMax < 0) blockColorMax = 0;
-      window.blockColorMax = blockColorMax;
-      blockLayers.forEach(function(layer) { resetBlockStyle(layer); });
+      // Every layer is still unfiltered at this point in wireUp(), so this
+      // paints against the full dataset's min/max; applyFilters() calls
+      // recomputeBlockColorScale() again once neighbourhood/other filters are
+      // known, narrowing it to whatever's actually visible.
+      recomputeBlockColorScale();
 
       // Blocks and building markers share one canvas renderer (prefer_canvas=True
       // on the map, neither layer sets a custom pane/renderer), so paint order is
@@ -559,11 +734,33 @@
       sendBlocksToBack();
 
       applyMarkerMetadata();
-      applyRezoningMetadata();
       const markerCount = Object.keys(window.buildingIndex).length;
       if (!markerCount) {
         throw new Error('Building markers not ready');
       }
+
+      // Same shared-canvas insertion-order issue sendBlocksToBack() handles
+      // for blocks — except here it's the unmatched SRO/co-op/rezoning
+      // overlay markers (always present on the canvas now, shown/hidden via
+      // radius rather than being added/removed) that can end up drawn on
+      // top of building markers and silently steal their clicks wherever
+      // the two spatially overlap. Python already adds buildings after the
+      // unmatched-overlay layers so this is a no-op at initial load, but
+      // toggling "Show buildings" off/on re-inserts layerVTU/layerNon at
+      // the end of the canvas draw order regardless — this is the runtime
+      // backstop for that case. Only real buildings (not synthetic/
+      // unmatched entries, which also live in window.buildingIndex) are
+      // brought forward.
+      function sendBuildingsToFront() {
+        Object.keys(window.buildingIndex).forEach(function(key) {
+          const marker = window.buildingIndex[key];
+          if (marker && !marker._isSynthetic && typeof marker.bringToFront === 'function') {
+            marker.bringToFront();
+          }
+        });
+      }
+      sendBuildingsToFront();
+
       applyZoomScaling();
       // Toggling a FeatureGroup/GeoJSON layer on/off (e.g. "Show buildings",
       // "Show blocks") fires 'layeradd'/'layerremove' on the map once PER CHILD
@@ -696,9 +893,6 @@
       const vizBlocksChk = document.getElementById('viz-show-blocks');
       const hideEmptyBlocksChk = document.getElementById('viz-hide-empty-blocks');
       const vizNeighbourhoodsChk = document.getElementById('viz-show-neighbourhoods');
-      const vizSroHousingChk = document.getElementById('viz-show-sro-housing');
-      const vizRezoningOpenChk = document.getElementById('viz-show-rezoning-open');
-      const vizRezoningClosedChk = document.getElementById('viz-show-rezoning-closed');
       const tableSearchInput = document.getElementById('owner-search');
       const statusCells = {
         total: {
@@ -721,6 +915,7 @@
       const legendContainerEl = document.getElementById('legend-map');
       const legendBlocksEl = document.getElementById('legend-blocks-section');
       const legendBuildingsEl = document.getElementById('legend-buildings-section');
+      const legendHousingEl = document.getElementById('legend-housing-section');
 
       const metricControls = {};
       let metricKeys = [];
@@ -964,8 +1159,12 @@
         }
         setLegendDisplay(legendBlocksEl, showBlocksLegend);
         setLegendDisplay(legendBuildingsEl, showBuildingLegend);
+        // Static reference info (housing-type ring / rezoning badge colors),
+        // not tied to any checkbox — always shown whenever the legend panel
+        // itself is visible.
+        setLegendDisplay(legendHousingEl, true);
         if (legendContainerEl) {
-          const shouldShow = (showBlocksLegend && legendBlocksEl) || (showBuildingLegend && legendBuildingsEl);
+          const shouldShow = (showBlocksLegend && legendBlocksEl) || (showBuildingLegend && legendBuildingsEl) || !!legendHousingEl;
           legendContainerEl.style.display = shouldShow ? 'flex' : 'none';
         }
       }
@@ -1023,8 +1222,8 @@
           }
           if (typeof marker.setStyle === 'function') {
             marker.setStyle({
-              weight: MARKER_STROKE_WEIGHT,
-              color: MARKER_STROKE_COLOR,
+              weight: effectiveStrokeWeight(marker),
+              color: effectiveStrokeColor(marker),
               fillOpacity: baseOpacity,
               fillColor: marker._baseColor || (marker.options && marker.options.fillColor) || '#9e9e9e'
             });
@@ -1032,6 +1231,7 @@
           if ((marker._selectionRefs || 0) > 0) {
             highlightMarker(marker, true);
           }
+          syncMarkerAnnotations(marker);
         });
       }
 
@@ -1417,10 +1617,14 @@
             summary: summary,
           };
         });
+        const showOpenRezoning = vizRezoningOpenChk ? vizRezoningOpenChk.checked !== false : true;
+        const showClosedRezoning = vizRezoningClosedChk ? vizRezoningClosedChk.checked !== false : true;
         const visibleBids = new Set();
         buildingRows.forEach(function(row) {
           const bid = row.getAttribute('data-bid');
           const marker = window.buildingIndex[bid];
+          const isSynthetic = row.getAttribute('data-synthetic') === '1';
+          const rowSource = row.getAttribute('data-source') || '';
 
           let matches = true;
           const rowArea = (row.getAttribute('data-area') || '').toLowerCase().trim();
@@ -1430,7 +1634,12 @@
             matches = false;
           }
 
-          if (matches && metricKeys.length) {
+          // Synthetic (unmatched SRO/co-op/rezoning) rows have no units/year-
+          // built/value data — exempt them from those sliders entirely rather
+          // than let a NaN comparison silently hide them — but they ARE
+          // gated by their own type's show/hide checkbox, which real
+          // building rows have no equivalent of.
+          if (matches && metricKeys.length && !isSynthetic) {
             for (let i = 0; i < metricKeys.length; i += 1) {
               const metric = metricKeys[i];
               const threshold = thresholds[metric];
@@ -1442,6 +1651,17 @@
               }
               if (threshold.min !== null && value < threshold.min) { matches = false; break; }
               if (threshold.max !== null && value > threshold.max) { matches = false; break; }
+            }
+          }
+
+          if (matches && isSynthetic) {
+            if (rowSource === 'sro') {
+              matches = matches && showSroChecked;
+            } else if (rowSource === 'coop') {
+              matches = matches && showCoopChecked;
+            } else if (rowSource === 'rezoning') {
+              const statusGroup = row.getAttribute('data-rezoning-status-group') || '';
+              matches = matches && (statusGroup === 'closed' ? showClosedRezoning : showOpenRezoning);
             }
           }
 
@@ -1480,22 +1700,31 @@
           var ids = window.blockBuildingIndex[blockId] || [];
           var isEmpty = ids.length === 0;
           var row = blockRowById[blockId];
+          // The neighbourhood filter always has to be checked against the
+          // block's own local_area (data-area), never inferred solely from
+          // which of its member buildings are visible: the block<->building
+          // spatial join has a known data bug where a handful of blocks pick
+          // up member buildings from other, sometimes distant, neighbourhoods
+          // (e.g. a "Fairview" block claiming a Marpole or Strathcona
+          // building) — relying on hasVisible alone let a block from one
+          // neighbourhood stay on-screen just because one of its mismatched
+          // buildings belonged to whichever neighbourhood *was* selected,
+          // which is what made toggling one neighbourhood appear to affect
+          // blocks "across the whole city".
+          var blockArea = row ? (row.getAttribute('data-area') || '').toLowerCase().trim() : '';
+          var hoodMatch = true;
+          if (restrictHoods) {
+            hoodMatch = selectedHoods.includes(blockArea);
+          } else if (hideWhenNone) {
+            hoodMatch = false;
+          }
           var shouldHide;
           if (isEmpty) {
-            // Empty blocks have no buildings to derive visibility from, so the
-            // neighbourhood filter has to be checked against the block's own
-            // local_area (data-area) directly, not via visibleBids.
-            var blockArea = row ? (row.getAttribute('data-area') || '').toLowerCase().trim() : '';
-            var hoodMatch = true;
-            if (restrictHoods) {
-              hoodMatch = selectedHoods.includes(blockArea);
-            } else if (hideWhenNone) {
-              hoodMatch = false;
-            }
+            // Empty blocks have no buildings to derive visibility from at all.
             shouldHide = hideEmptyBlocks || !hoodMatch;
           } else {
             var hasVisible = ids.some(function(id) { return visibleBids.has(String(id)); });
-            shouldHide = !hasVisible;
+            shouldHide = !hasVisible || !hoodMatch;
           }
           var layer = window.blocksIndex[blockId];
           if (row) {
@@ -1510,6 +1739,12 @@
           }
           setBlockFiltered(blockId, shouldHide);
         });
+
+        // Re-stretch the block color scale to whichever blocks are visible
+        // now that this pass's filtering is settled (e.g. narrowing to a
+        // single selected neighbourhood re-scales hue to that
+        // neighbourhood's own min/max instead of the whole dataset's).
+        recomputeBlockColorScale();
 
         // Was a per-row `document.querySelector('...:not(.hidden)')` CSS scan over all
         // building rows for every one of ~1,500 landlords — O(landlords x buildings) via
@@ -1575,6 +1810,7 @@
         showBuildingsChk.addEventListener('change', function() {
           toggleLayerVisibility(layerVTU, showBuildingsChk.checked !== false);
           toggleLayerVisibility(layerNon, showBuildingsChk.checked !== false);
+          if (showBuildingsChk.checked) sendBuildingsToFront();
           updateLegendVisibility();
         });
       } else {
@@ -1615,14 +1851,9 @@
       } else {
         toggleLayerVisibility(layerNeighbourhoods, true);
       }
-      if (vizSroHousingChk) {
-        toggleLayerVisibility(layerSroHousing, vizSroHousingChk.checked !== false);
-        vizSroHousingChk.addEventListener('change', function() {
-          toggleLayerVisibility(layerSroHousing, vizSroHousingChk.checked);
-        });
-      } else {
-        toggleLayerVisibility(layerSroHousing, true);
-      }
+      applyHousingTypeFilter();
+      if (vizShowSroChk) vizShowSroChk.addEventListener('change', applyHousingTypeFilter);
+      if (vizShowCoopChk) vizShowCoopChk.addEventListener('change', applyHousingTypeFilter);
       applyRezoningFilter();
       if (vizRezoningOpenChk) {
         vizRezoningOpenChk.addEventListener('change', applyRezoningFilter);
@@ -1647,6 +1878,7 @@
             showBuildingsChk.checked = true;
             toggleLayerVisibility(layerVTU, true);
             toggleLayerVisibility(layerNon, true);
+            sendBuildingsToFront();
           }
           if (vizBlocksChk) {
             vizBlocksChk.checked = true;
@@ -1657,10 +1889,9 @@
             vizNeighbourhoodsChk.checked = true;
             toggleLayerVisibility(layerNeighbourhoods, true);
           }
-          if (vizSroHousingChk) {
-            vizSroHousingChk.checked = true;
-            toggleLayerVisibility(layerSroHousing, true);
-          }
+          if (vizShowSroChk) vizShowSroChk.checked = true;
+          if (vizShowCoopChk) vizShowCoopChk.checked = true;
+          applyHousingTypeFilter();
           if (vizRezoningOpenChk) vizRezoningOpenChk.checked = true;
           if (vizRezoningClosedChk) vizRezoningClosedChk.checked = true;
           applyRezoningFilter();
@@ -1739,6 +1970,11 @@
       updateLegendVisibility();
       applyFilters();
     } catch (e) {
+      wireUpAttempts += 1;
+      if (wireUpAttempts > 50) {
+        console.error('wireUp() failed after ' + wireUpAttempts + ' attempts, giving up:', e);
+        return;
+      }
       setTimeout(wireUp, 120);
     }
   }
@@ -1748,9 +1984,8 @@
       fetchJson(DATA_URLS.filterConfig),
       fetchJson(DATA_URLS.markerMetadata),
       fetchJson(DATA_URLS.buildingData),
-      fetchJsonOptional(DATA_URLS.rezoningMetadata),
     ]).then(function(results) {
-      assignLoadedData(results[0], results[1], results[2], results[3]);
+      assignLoadedData(results[0], results[1], results[2]);
     });
   }
 

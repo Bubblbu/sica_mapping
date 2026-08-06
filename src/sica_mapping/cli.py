@@ -25,6 +25,7 @@ _REQUIRED_PATHS = (
 _OPTIONAL_PATHS = (
     "sro_housing",
     "rezoning_applications",
+    "coops",
 )
 
 
@@ -130,6 +131,12 @@ def parse_args() -> argparse.Namespace:
         dest="rezoning_applications",
         default=None,
         help="Optional rezoning applications CSV overlay (Name, Status, Latitude, Longitude, etc.)",
+    )
+    ap.add_argument(
+        "--coops",
+        dest="coops",
+        default=None,
+        help="Optional co-op housing CSV overlay (id, address, lat, lon, status, etc.)",
     )
     ap.add_argument("--out", help=f"Output HTML (default: {DEFAULT_OUT})")
     ap.add_argument(

@@ -26,6 +26,7 @@ coverage.xml
 # Editor settings
 .idea/
 .vscode/
+.~lock.*#
 
 # Project-generated assets
 www/

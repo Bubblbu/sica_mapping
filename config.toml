@@ -9,6 +9,7 @@ vtu = "data/membership_full.csv"
 sica_core_db = "data/sica_core.db"
 sro_housing = "data/sra_housing_combined.csv"
 rezoning_applications = "data/rezoning_applications.csv"
+coops = "data/coops_vancouver.csv"
 
 [options]
 out = "index.html"

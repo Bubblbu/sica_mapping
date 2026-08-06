@@ -34,6 +34,9 @@ The manually-curated ownership knowledge — built from tenant testimony and res
 - **City of Vancouver FOI records** — purpose-built rental inventory (address, year built, size, name). Periodic, public.
 - **VTU NationBuilder exports** — membership data, manually anonymized by removing sensitive fields before use. Controlled internally, updated on VTU's own cadence.
 - **Manual research / tenant reports** — common ownership across shell companies, identified through tenant testimony. Grows piecemeal, no external source — this is the project's core IP.
+- **Third-party online sources** — e.g. CHF BC's co-op housing list. Scraped/pulled from another organization's own site, not the City or VTU.
+
+See [`docs/DATA_SOURCES.md`](docs/DATA_SOURCES.md) for the full per-source catalog: origin, license/attribution, fetch method (scripted vs. manual), format quirks, and refresh cadence for every source above except manual research (which lives entirely in the `ownership_claims` model below).
 
 ### Storage engine (Q6)
 **SQLite now, schema designed to be Postgres-compatible.** No infrastructure to run/pay for/secure while solo and pre-funding. Migrating to Postgres later (multi-user concurrency, hosted internal app) should be mechanical, not a rewrite — avoid SQLite-specific schema quirks.

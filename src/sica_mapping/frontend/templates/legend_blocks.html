@@ -60,10 +60,10 @@
   <div class="legend-card" id="legend-blocks-section">
     <div class="legend-heading">Blocks — total units</div>
     <div class="legend-gradient" style="background: linear-gradient(to right, #c7e9c0, #a1d99b, #74c476, #41ab5d, #238b45, #005a32);"></div>
-    <div class="legend-scale">
+    <div class="legend-scale" id="block-legend-scale">
       $block_ticks_html
     </div>
-    <div class="legend-note">Color scaled to 0–$block_max_label units (absolute totals).</div>
+    <div class="legend-note" id="block-legend-note">Color scaled to 0–$block_max_label units (visible blocks).</div>
   </div>
   <div class="legend-card" id="legend-buildings-section">
     <div class="legend-heading">VTU buildings</div>
@@ -71,5 +71,15 @@
       <div class="legend-key-row"><span class="legend-swatch" style="background:#cc4778;"></span> Has a VTU member</div>
       <div class="legend-key-row"><span class="legend-swatch" style="background:#9e9e9e;"></span> No VTU member</div>
     </div>
+  </div>
+  <div class="legend-card" id="legend-housing-section">
+    <div class="legend-heading">Housing type &amp; rezoning</div>
+    <div class="legend-key">
+      <div class="legend-key-row"><span class="legend-swatch" style="background:transparent;border:2px solid #3182bd;"></span> SRO/SRA (ring)</div>
+      <div class="legend-key-row"><span class="legend-swatch" style="background:transparent;border:2px solid #d97706;"></span> Co-op (ring)</div>
+      <div class="legend-key-row"><span class="legend-swatch" style="background:#2ca25f;width:8px;height:8px;"></span> Rezoning — closed/approved (dot)</div>
+      <div class="legend-key-row"><span class="legend-swatch" style="background:#e6550d;width:8px;height:8px;"></span> Rezoning — open (dot)</div>
+    </div>
+    <div class="legend-note">Fill color still shows VTU membership. Unmatched SRO/co-op/rezoning records (no linked building) show as small hollow markers in the same colors.</div>
   </div>
 </div>

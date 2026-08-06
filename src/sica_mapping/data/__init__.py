@@ -21,6 +21,7 @@ from .spatial import (
     point_in_block_ids,
 )
 from .geometry import poly_to_geojson
+from .overlays import match_overlays, rezoning_status_group, OverlayResult
 from .tables import (
     buildings_table,
     blocks_table,
@@ -30,6 +31,7 @@ from .tables import (
     rows_blocks,
     rows_landlords,
     rows_neighbourhoods,
+    rows_synthetic,
 )
 from .vtu import (
     prepare_membership_records,
@@ -57,6 +59,9 @@ __all__ = [
     "local_area_boundaries_feature_collection",
     "poly_to_geojson",
     "point_in_block_ids",
+    "match_overlays",
+    "rezoning_status_group",
+    "OverlayResult",
     "buildings_table",
     "blocks_table",
     "landlords_table",
@@ -65,6 +70,7 @@ __all__ = [
     "rows_blocks",
     "rows_landlords",
     "rows_neighbourhoods",
+    "rows_synthetic",
     "prepare_membership_records",
     "membership_records_by_address",
     "membership_filter_config",
