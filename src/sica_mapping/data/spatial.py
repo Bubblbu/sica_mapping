@@ -344,7 +344,13 @@ def deduplicate_buildings(
         records.append(rec)
     out = pd.DataFrame(records)
     out["b_id"] = out.index
-    return out.dropna(subset=["lat", "lon"]).copy()
+    # b_id is already fixed above (the stable identifier used everywhere
+    # downstream), so resetting the pandas index here is safe — it doesn't
+    # touch b_id's values, only prevents the gaps dropna() leaves from
+    # tripping up later code that assigns a freshly-indexed Series onto this
+    # frame's columns (pandas aligns those by index label; see the
+    # point_in_block_ids fix for the bug that caused).
+    return out.dropna(subset=["lat", "lon"]).reset_index(drop=True).copy()
 
 
 def parse_blocks(
@@ -599,6 +605,15 @@ def point_in_block_ids(pts_df: pd.DataFrame, blocks_df: pd.DataFrame) -> pd.Seri
                 return block_id
         return np.nan
 
+    # Must carry pts_df's own index, not a fresh default RangeIndex: the
+    # caller does `pts["block_id"] = point_in_block_ids(pts, blocks_df)`,
+    # which pandas aligns by index *label*, not position. pts_df's index can
+    # have gaps by this point (e.g. deduplicate_buildings() drops rows
+    # without a .reset_index() after it), so a plain 0..n-1 Series here was
+    # silently attaching each computed block_id to the wrong row once any
+    # earlier row had been dropped — scattering "member" buildings from
+    # unrelated, sometimes distant, neighbourhoods into the same block.
     return pd.Series(
-        [locate_block(lo, la) for la, lo in zip(pts_df["lat"], pts_df["lon"])]
+        [locate_block(lo, la) for la, lo in zip(pts_df["lat"], pts_df["lon"])],
+        index=pts_df.index,
     )
