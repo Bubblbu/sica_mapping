@@ -298,14 +298,6 @@ def deduplicate_buildings(
             if pd.notna(units) and units > 0
             else 0.0
         )
-        payload = []
-        if "members_payload" in g.columns:
-            non_empty = g["members_payload"].dropna()
-            if not non_empty.empty:
-                for candidate in non_empty:
-                    if isinstance(candidate, list) and candidate:
-                        payload = candidate
-                        break
         latest_year_series = (
             g["latest_membership_year"].dropna()
             if "latest_membership_year" in g.columns
@@ -328,7 +320,6 @@ def deduplicate_buildings(
                 "owner_group": owner,
                 "owner_key": sanitize_owner_fn(owner),
                 "member_count_all": members_all,
-                "members_payload": payload,
                 "value_land": val_land,
                 "value_bldg": val_bldg,
                 "bldg_land_ratio": ratio,

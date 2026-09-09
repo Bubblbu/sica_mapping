@@ -29,14 +29,7 @@ from .spatial import (
     parse_blocks,
     aggregate_blocks,
 )
-from .vtu import (
-    prepare_membership_records,
-    membership_records_by_address,
-    membership_filter_config,
-    compute_vtu_counts,
-    compute_latest_membership_year,
-    attach_vtu_metrics,
-)
+from .vtu import attach_vtu_metrics
 
 
 PIPELINE_CACHE_FILES = {
@@ -335,7 +328,7 @@ def run_data_pipeline(
         )
         progress.step("Loaded source tables")
         logger.info(
-            "Loaded datasets — buildings: %d, addresses: %d, blocks: %d, block numbers: %d, membership rows: %d",
+            "Loaded datasets — buildings: %d, addresses: %d, blocks: %d, block numbers: %d, membership addresses: %d",
             len(bldg_df),
             len(addr_df),
             len(blocks_raw),
@@ -397,13 +390,15 @@ def run_data_pipeline(
             logger.info("Address match coverage: no building records after filtering")
         progress.step("Matched buildings with addresses")
 
-        members_df = prepare_membership_records(vtu_df)
-        membership_payload = membership_records_by_address(members_df)
-        active_counts = compute_vtu_counts(members_df, active_only=True)
-        all_counts = compute_vtu_counts(members_df, active_only=False)
-        latest_year_counts = compute_latest_membership_year(members_df)
-        joined["members_payload"] = joined["addr_key"].map(
-            lambda key: membership_payload.get(key, [])
+        # vtu_df is already an address-level aggregate (addr_key, member_count_active,
+        # member_count_all, latest_membership_year) — see docs/DATA_SOURCES.md and
+        # scripts/build_vtu_public_extract.py. It never carries per-member rows,
+        # tags, or timestamps: that's the same resolution already shown on a
+        # building's public marker (a count), never more.
+        active_counts = vtu_df[["addr_key", "member_count_active"]]
+        all_counts = vtu_df[["addr_key", "member_count_all"]]
+        latest_year_counts = vtu_df[["addr_key", "latest_membership_year"]].dropna(
+            subset=["latest_membership_year"]
         )
         joined = attach_vtu_metrics(joined, active_counts, all_counts)
         joined = joined.merge(latest_year_counts, on="addr_key", how="left")
@@ -473,7 +468,11 @@ def run_data_pipeline(
         blocks_merged, pts_df = aggregate_blocks(pts_df, blocks_subset, block_numbers_df)
         progress.step("Aggregated block statistics")
 
-        filter_cfg = membership_filter_config(members_df)
+        # membership_years/top_tags/default_updated_since (the old per-member
+        # membership_filter_config output) were never read by wiring.js — only
+        # membership_year_metric below is. Dropping them means filter_cfg no
+        # longer needs anything more granular than the address-level vtu_df.
+        filter_cfg: dict[str, Any] = {}
         building_metrics = build_building_metrics(pts_df)
         filter_cfg["building_metrics"] = building_metrics
         filter_cfg["building_metric_order"] = [

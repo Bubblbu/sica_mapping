@@ -261,7 +261,6 @@ def add_buildings_layers(m: folium.Map, pts_df):
 
         block_id_val = r.get("block_id")
         block_id = int(block_id_val) if pd.notna(block_id_val) else None
-        members_payload = r.get("members_payload", [])
 
         target_layer = layer_vtu if has_vtu_member else layer_non
 
@@ -321,7 +320,6 @@ def add_buildings_layers(m: folium.Map, pts_df):
                 "b_id": int(r["b_id"]),
                 "owner_key": r["owner_key"],
                 "block_id": block_id,
-                "members_payload": members_payload,
                 "base_radius": radius_val,
                 "base_opacity": opacity,
                 "base_color": color,
@@ -466,7 +464,6 @@ def add_unmatched_overlay_layers(
                 "b_id": rec["synthetic_id"],
                 "owner_key": None,
                 "block_id": None,
-                "members_payload": [],
                 "base_radius": UNMATCHED_MARKER_RADIUS,
                 "base_opacity": 0.0,
                 "base_color": color,
