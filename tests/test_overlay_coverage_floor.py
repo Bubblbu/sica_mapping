@@ -1,8 +1,11 @@
 """Regression guard: real-data overlay match rates must not silently drop.
 
-Runs the full sica_core ingest against config.toml's committed CSVs once, then
-asserts each source's match rate stays at or above a recorded floor. A parser
-regression that tanks recall fails here instead of shipping a thinner map.
+Runs the overlay-relevant part of the sica_core ingest against config.toml's
+committed CSVs once (buildings + addresses + blocks + the three overlay
+sources + boundaries — deliberately NOT membership, which needs a gitignored
+raw export and isn't present in CI), then asserts each source's match rate
+stays at or above a recorded floor. A parser regression that tanks recall
+fails here instead of shipping a thinner map.
 
 Floors are set a few points below the rates observed on the 2026-09 data
 (co-op 35%, SRO 24%, rezoning 11%) — tight enough to catch a real break,
@@ -19,7 +22,16 @@ import pytest
 from sica_core.config import load_ingest_config
 from sica_core.db import get_connection, init_db
 from sica_core.export import overlay_coverage
-from sica_core.ingest import run_ingest
+from sica_core.ingest.block_numbers import ingest_raw_block_numbers
+from sica_core.ingest.blocks import ingest_blocks
+from sica_core.ingest.merge import run_merge
+from sica_core.ingest.overlays import run_overlay_match
+from sica_core.ingest.raw_addresses import ingest_raw_addresses
+from sica_core.ingest.raw_buildings import ingest_raw_buildings
+from sica_core.ingest.raw_coops import ingest_raw_coops
+from sica_core.ingest.raw_local_areas import ingest_raw_local_areas
+from sica_core.ingest.raw_rezoning import ingest_raw_rezoning
+from sica_core.ingest.raw_sro import ingest_raw_sro
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 CONFIG = REPO_ROOT / "config.toml"
@@ -33,20 +45,32 @@ def real_coverage(tmp_path_factory) -> dict:
     if not CONFIG.exists():
         pytest.skip("config.toml not present")
     config = load_ingest_config(str(CONFIG))
-    for path in (
+    required = [
         config.buildings,
         config.addresses,
+        config.blocks,
+        config.block_numbers,
         config.sro_housing,
         config.coops,
         config.rezoning_applications,
         config.local_area_boundary,
-    ):
+    ]
+    for path in required:
         if not path or not (REPO_ROOT / path).exists():
             pytest.skip(f"source CSV missing: {path}")
-    config.db_path = str(tmp_path_factory.mktemp("db") / "sica_core.db")
-    conn = get_connection(config.db_path)
+
+    conn = get_connection(str(tmp_path_factory.mktemp("db") / "sica_core.db"))
     init_db(conn)
-    run_ingest(conn, config)
+    ingest_raw_buildings(conn, config.buildings)
+    ingest_raw_addresses(conn, config.addresses)
+    ingest_blocks(conn, config.blocks, config.bbox)
+    ingest_raw_block_numbers(conn, config.block_numbers)
+    ingest_raw_sro(conn, config.sro_housing)
+    ingest_raw_coops(conn, config.coops)
+    ingest_raw_rezoning(conn, config.rezoning_applications)
+    ingest_raw_local_areas(conn, config.local_area_boundary)
+    run_merge(conn)
+    run_overlay_match(conn)
     return overlay_coverage(conn)
 
 
