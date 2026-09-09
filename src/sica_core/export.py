@@ -32,9 +32,252 @@ import numpy as np
 import pandas as pd
 from shapely.strtree import STRtree
 
-from .building_metrics import BUILDING_METRICS, _summarize_metric, build_building_metrics
+from .building_metrics import (
+    BUILDING_METRICS,
+    _summarize_metric,
+    build_building_metrics,
+)
 from .geometry import parse_geom
-from .membership_metrics import compute_building_member_metrics, membership_filter_config
+from .membership_metrics import (
+    compute_building_member_metrics,
+    membership_filter_config,
+)
+
+# Overlay columns attached to every building row, matching what
+# src/sica_mapping/data/overlays.py::match_overlays() used to add at render
+# time. Booleans default False, strings default "" — so downstream
+# (buildings_table, add_buildings_layers) never has to branch on absence.
+_OVERLAY_BOOL_COLS = ["is_coop", "is_sro", "is_rezoning"]
+_OVERLAY_STR_COLS = [
+    "coop_status",
+    "coop_ownership_model",
+    "sro_owner",
+    "sro_operator",
+    "sro_operator_group",
+    "sro_ownership_group",
+    "sro_occupancy_status",
+    "sro_registered_rooms",
+    "rezoning_status",
+    "rezoning_status_group",
+    "rezoning_category",
+    "rezoning_status_detail",
+    "rezoning_link",
+    "housing_type",
+]
+
+
+def _rezoning_status_group(status: object) -> str:
+    """Port of src/sica_mapping/data/overlays.py::rezoning_status_group."""
+    return "closed" if str(status or "").strip().lower() == "approved" else "open"
+
+
+def _clean(val: object) -> str:
+    if val is None:
+        return ""
+    if isinstance(val, float) and pd.isna(val):
+        return ""
+    s = str(val).strip()
+    return "" if s.lower() == "nan" else s
+
+
+def overlay_building_columns(conn: sqlite3.Connection) -> pd.DataFrame:
+    """One row per building with a matched overlay, carrying the is_*/detail
+    columns. First matched raw record per (source, building) wins — mirrors
+    match_overlays()'s `matched.drop_duplicates()` on CSV order.
+    """
+    coop = pd.read_sql_query(
+        "SELECT om.building_id, rc.status AS coop_status, "
+        "       rc.ownership_model AS coop_ownership_model "
+        "FROM overlay_matches om JOIN raw_coops rc ON rc.raw_coop_id = om.raw_row_id "
+        "WHERE om.overlay_source = 'coop' AND om.building_id IS NOT NULL "
+        "ORDER BY om.raw_row_id",
+        conn,
+    ).drop_duplicates("building_id")
+    coop["is_coop"] = True
+
+    sro = pd.read_sql_query(
+        "SELECT om.building_id, rs.owner AS sro_owner, rs.operator AS sro_operator, "
+        "       rs.operator_group AS sro_operator_group, rs.ownership_group AS sro_ownership_group, "
+        "       rs.occupancy_status AS sro_occupancy_status, "
+        "       rs.registered_rooms AS sro_registered_rooms "
+        "FROM overlay_matches om JOIN raw_sro rs ON rs.raw_sro_id = om.raw_row_id "
+        "WHERE om.overlay_source = 'sro' AND om.building_id IS NOT NULL "
+        "ORDER BY om.raw_row_id",
+        conn,
+    ).drop_duplicates("building_id")
+    sro["is_sro"] = True
+
+    rez = pd.read_sql_query(
+        "SELECT om.building_id, rr.status AS rezoning_status, rr.category AS rezoning_category, "
+        "       rr.status_detail AS rezoning_status_detail, rr.link AS rezoning_link "
+        "FROM overlay_matches om JOIN raw_rezoning rr ON rr.raw_rezoning_id = om.raw_row_id "
+        "WHERE om.overlay_source = 'rezoning' AND om.building_id IS NOT NULL "
+        "ORDER BY om.raw_row_id",
+        conn,
+    ).drop_duplicates("building_id")
+    rez["is_rezoning"] = True
+    rez["rezoning_status_group"] = rez["rezoning_status"].apply(_rezoning_status_group)
+
+    out = coop.merge(sro, on="building_id", how="outer").merge(
+        rez, on="building_id", how="outer"
+    )
+    for col in _OVERLAY_BOOL_COLS:
+        out[col] = out[col].astype("boolean").fillna(False).astype(bool)
+    for col in _OVERLAY_STR_COLS:
+        if col not in out.columns:
+            out[col] = ""
+        out[col] = out[col].map(_clean)
+    out["housing_type"] = np.where(
+        out["is_coop"] & out["is_sro"],
+        "co-op, sro",
+        np.where(out["is_coop"], "co-op", np.where(out["is_sro"], "sro", "")),
+    )
+    return out.rename(columns={"building_id": "b_id"})
+
+
+# raw_<source> row -> the unmatched-marker record shape build.py consumes
+# (add_unmatched_overlay_layers / rows_synthetic). Kept byte-for-byte
+# compatible with what match_overlays() produced for OverlayResult.unmatched_records.
+_UNMATCHED_QUERIES = {
+    "coop": (
+        "SELECT om.raw_row_id, om.local_area, rc.source_id, rc.lat, rc.lon, rc.address, "
+        "       rc.title, rc.status, rc.ownership_model, rc.read_more_url "
+        "FROM overlay_matches om JOIN raw_coops rc ON rc.raw_coop_id = om.raw_row_id "
+        "WHERE om.overlay_source = 'coop' AND om.building_id IS NULL ORDER BY om.raw_row_id"
+    ),
+    "sro": (
+        "SELECT om.raw_row_id, om.local_area, rs.source_id, rs.latitude AS lat, rs.longitude AS lon, "
+        "       rs.address, rs.building_name, rs.secondary_address, rs.owner, rs.operator, "
+        "       rs.operator_group, rs.ownership_group, rs.registered_rooms, rs.occupancy_status "
+        "FROM overlay_matches om JOIN raw_sro rs ON rs.raw_sro_id = om.raw_row_id "
+        "WHERE om.overlay_source = 'sro' AND om.building_id IS NULL ORDER BY om.raw_row_id"
+    ),
+    "rezoning": (
+        "SELECT om.raw_row_id, om.local_area, rr.source_id, rr.latitude AS lat, rr.longitude AS lon, "
+        "       rr.name, rr.status, rr.category, rr.status_detail, rr.link "
+        "FROM overlay_matches om JOIN raw_rezoning rr ON rr.raw_rezoning_id = om.raw_row_id "
+        "WHERE om.overlay_source = 'rezoning' AND om.building_id IS NULL ORDER BY om.raw_row_id"
+    ),
+}
+
+
+def _num_or_none(val: object) -> float | None:
+    if val is None or (isinstance(val, float) and pd.isna(val)):
+        return None
+    try:
+        return float(val)
+    except (TypeError, ValueError):
+        return None
+
+
+def overlay_unmatched_records(conn: sqlite3.Connection) -> list[dict]:
+    records: list[dict] = []
+    for source, query in _UNMATCHED_QUERIES.items():
+        try:
+            rows = pd.read_sql_query(query, conn).to_dict(orient="records")
+        except pd.errors.DatabaseError:
+            continue
+        for r in rows:
+            sid = f"{source}-{r.get('source_id')}-{r['raw_row_id']}"
+            local_area = _clean(r.get("local_area"))
+            lat, lon = _num_or_none(r.get("lat")), _num_or_none(r.get("lon"))
+            if source == "coop":
+                records.append(
+                    {
+                        "synthetic_id": sid,
+                        "source": "coop",
+                        "lat": lat,
+                        "lon": lon,
+                        "address": _clean(r.get("address")),
+                        "local_area": local_area,
+                        "housing_type": "coop",
+                        "rezoning_status": "",
+                        "rezoning_status_group": "",
+                        "popup_fields": {
+                            "title": _clean(r.get("title")),
+                            "status": _clean(r.get("status")),
+                            "ownership_model": _clean(r.get("ownership_model")),
+                            "read_more_url": _clean(r.get("read_more_url")),
+                        },
+                    }
+                )
+            elif source == "sro":
+                records.append(
+                    {
+                        "synthetic_id": sid,
+                        "source": "sro",
+                        "lat": lat,
+                        "lon": lon,
+                        "address": _clean(r.get("address")),
+                        "local_area": local_area,
+                        "housing_type": "sro",
+                        "rezoning_status": "",
+                        "rezoning_status_group": "",
+                        "popup_fields": {
+                            "building_name": _clean(r.get("building_name")),
+                            "secondary_address": _clean(r.get("secondary_address")),
+                            "owner": _clean(r.get("owner")),
+                            "operator": _clean(r.get("operator")),
+                            "operator_group": _clean(r.get("operator_group")),
+                            "ownership_group": _clean(r.get("ownership_group")),
+                            "registered_rooms": _clean(r.get("registered_rooms")),
+                            "occupancy_status": _clean(r.get("occupancy_status")),
+                        },
+                    }
+                )
+            else:  # rezoning
+                status = _clean(r.get("status"))
+                records.append(
+                    {
+                        "synthetic_id": sid,
+                        "source": "rezoning",
+                        "lat": lat,
+                        "lon": lon,
+                        "address": _clean(r.get("name")),
+                        "local_area": local_area,
+                        "housing_type": "",
+                        "rezoning_status": status,
+                        "rezoning_status_group": _rezoning_status_group(status),
+                        "popup_fields": {
+                            "name": _clean(r.get("name")),
+                            "status": status,
+                            "category": _clean(r.get("category")),
+                            "status_detail": _clean(r.get("status_detail")),
+                            "link": _clean(r.get("link")),
+                        },
+                    }
+                )
+    return records
+
+
+def overlay_coverage(conn: sqlite3.Connection) -> dict:
+    """Per-source match coverage, for a regression guard / a future internal view."""
+    try:
+        rows = conn.execute(
+            "SELECT overlay_source, match_method, COUNT(*) "
+            "FROM overlay_matches GROUP BY overlay_source, match_method"
+        ).fetchall()
+    except sqlite3.OperationalError:
+        return {}
+    by_source: dict[str, dict] = {}
+    for source, method, count in rows:
+        s = by_source.setdefault(
+            source,
+            {
+                "total": 0,
+                "matched": 0,
+                "address": 0,
+                "secondary_address": 0,
+                "unmatched": 0,
+            },
+        )
+        s[method] = count
+        s["total"] += count
+        if method != "unmatched":
+            s["matched"] += count
+    for s in by_source.values():
+        s["match_rate"] = round(s["matched"] / s["total"], 4) if s["total"] else 0.0
+    return by_source
 
 
 def reconstruct_points(conn: sqlite3.Connection, now: pd.Timestamp) -> pd.DataFrame:
@@ -69,14 +312,39 @@ def reconstruct_points(conn: sqlite3.Connection, now: pd.Timestamp) -> pd.DataFr
         0.0,
     )
 
+    overlays = overlay_building_columns(conn)
+    merged = merged.merge(overlays, on="b_id", how="left")
+    for col in _OVERLAY_BOOL_COLS:
+        merged[col] = merged[col].astype("boolean").fillna(False).astype(bool)
+    for col in _OVERLAY_STR_COLS:
+        merged[col] = merged[col].fillna("")
+
     return merged[
         [
-            "addr_key", "address", "lat", "lon", "units", "year_built", "n_issues",
-            "member_count", "has_vtu_member", "member_share_building", "owner_group",
-            "owner_key", "member_count_all", "members_payload", "value_land",
-            "value_bldg", "bldg_land_ratio", "local_area", "b_id", "block_id",
+            "addr_key",
+            "address",
+            "lat",
+            "lon",
+            "units",
+            "year_built",
+            "n_issues",
+            "member_count",
+            "has_vtu_member",
+            "member_share_building",
+            "owner_group",
+            "owner_key",
+            "member_count_all",
+            "members_payload",
+            "value_land",
+            "value_bldg",
+            "bldg_land_ratio",
+            "local_area",
+            "b_id",
+            "block_id",
             "latest_membership_year",
         ]
+        + _OVERLAY_BOOL_COLS
+        + _OVERLAY_STR_COLS
     ]
 
 
@@ -165,7 +433,9 @@ def assign_block_labels(blocks_merged: pd.DataFrame) -> pd.Series:
     return labels
 
 
-def reconstruct_blocks(conn: sqlite3.Connection, points_df: pd.DataFrame) -> pd.DataFrame:
+def reconstruct_blocks(
+    conn: sqlite3.Connection, points_df: pd.DataFrame
+) -> pd.DataFrame:
     # Not bbox-filtered: buildings.csv is already city-wide (not West-End-scoped —
     # see merge.py's notes), so restricting blocks to the static config bbox left
     # most of the actual data — the whole eastside and south of the city — with no
@@ -206,7 +476,9 @@ def reconstruct_blocks(conn: sqlite3.Connection, points_df: pd.DataFrame) -> pd.
     block_numbers_df = pd.read_sql_query(
         "SELECT geom, geo_local_area FROM raw_block_numbers", conn
     )
-    merged["local_area"] = resolve_local_area_from_block_numbers(merged, block_numbers_df)
+    merged["local_area"] = resolve_local_area_from_block_numbers(
+        merged, block_numbers_df
+    )
     merged["block_label"] = assign_block_labels(merged)
     return merged.drop(columns=["geom"])
 
@@ -226,9 +498,15 @@ def reconstruct_filter_config(
     pts["local_area"] = pts["local_area"].fillna("(Unknown)")
     pts["units"] = pts["units"].fillna(0)
     neighbourhood_counts = pts["local_area"].value_counts().sort_values(ascending=False)
-    neighbourhood_units = pts.groupby("local_area")["units"].sum().sort_values(ascending=False)
+    neighbourhood_units = (
+        pts.groupby("local_area")["units"].sum().sort_values(ascending=False)
+    )
     cfg["neighbourhoods"] = [
-        {"name": area, "count": int(count), "units": int(round(neighbourhood_units.get(area, 0)))}
+        {
+            "name": area,
+            "count": int(count),
+            "units": int(round(neighbourhood_units.get(area, 0))),
+        }
         for area, count in neighbourhood_counts.items()
     ]
 
@@ -308,4 +586,14 @@ def export_to_cache(
 
     (data_dir / "filter_config.json").write_text(
         json.dumps(filter_cfg, indent=2, default=str), encoding="utf-8"
+    )
+
+    # Standalone (unmatched) overlay markers + per-source match coverage.
+    # build.py reads overlay_unmatched.json instead of re-running
+    # match_overlays() when this file is present in the cache dir.
+    (data_dir / "overlay_unmatched.json").write_text(
+        json.dumps(overlay_unmatched_records(conn), indent=2), encoding="utf-8"
+    )
+    (data_dir / "overlay_coverage.json").write_text(
+        json.dumps(overlay_coverage(conn), indent=2), encoding="utf-8"
     )

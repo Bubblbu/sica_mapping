@@ -41,6 +41,51 @@ from .frontend import (
 )
 
 
+# Overlay columns every building row carries downstream (buildings_table,
+# add_buildings_layers). Normally added by match_overlays(); when sica_core
+# has already done the matching they arrive on pts_df via the cached
+# building_points.json, and the standalone unmatched markers come from
+# overlay_unmatched.json instead of an OverlayResult.
+_OVERLAY_BOOL_COLS = ("is_coop", "is_sro", "is_rezoning")
+_OVERLAY_STR_COLS = (
+    "coop_status",
+    "coop_ownership_model",
+    "sro_owner",
+    "sro_operator",
+    "sro_operator_group",
+    "sro_ownership_group",
+    "sro_occupancy_status",
+    "sro_registered_rooms",
+    "rezoning_status",
+    "rezoning_status_group",
+    "rezoning_category",
+    "rezoning_status_detail",
+    "rezoning_link",
+    "housing_type",
+)
+
+
+def _load_exported_overlay_unmatched(data_dir: Path | None) -> list[dict] | None:
+    """The unmatched-overlay records sica_core's export wrote, if present.
+    None means "no sica_core overlay export here" -> fall back to match_overlays()."""
+    if not data_dir:
+        return None
+    path = Path(data_dir) / "overlay_unmatched.json"
+    if not path.exists():
+        return None
+    return json.loads(path.read_text(encoding="utf-8"))
+
+
+def _ensure_overlay_columns(pts_df: pd.DataFrame) -> pd.DataFrame:
+    for col in _OVERLAY_BOOL_COLS:
+        if col not in pts_df.columns:
+            pts_df[col] = False
+    for col in _OVERLAY_STR_COLS:
+        if col not in pts_df.columns:
+            pts_df[col] = ""
+    return pts_df
+
+
 def _ensure_output_path(path: Path) -> Path:
     original = Path(path)
     if original.is_absolute():
@@ -179,15 +224,30 @@ def build_map(args) -> None:
     # point-in-polygon local-area lookup for unmatched overlay records — and
     # match_overlays() enriches pts_df before anything downstream (marker
     # rendering, table building) reads housing_type/rezoning_* columns.
-    neighbourhoods_fc = local_area_boundaries_feature_collection(args.local_area_boundary)
-    overlay_result = match_overlays(
-        pts_df,
-        coops_path=getattr(args, "coops", None),
-        sro_path=getattr(args, "sro_housing", None),
-        rezoning_path=getattr(args, "rezoning_applications", None),
-        local_area_boundary_fc=neighbourhoods_fc,
+    neighbourhoods_fc = local_area_boundaries_feature_collection(
+        args.local_area_boundary
     )
-    pts_df = overlay_result.pts_df
+    exported_unmatched = _load_exported_overlay_unmatched(data_dir)
+    if exported_unmatched is not None:
+        # sica_core already matched overlays into overlay_matches and exported
+        # the result: pts_df carries the is_*/detail columns via
+        # building_points.json, and these are the standalone markers.
+        logger.info(
+            "Using sica_core overlay export (%d unmatched records); skipping match_overlays()",
+            len(exported_unmatched),
+        )
+        pts_df = _ensure_overlay_columns(pts_df)
+        unmatched_records = exported_unmatched
+    else:
+        overlay_result = match_overlays(
+            pts_df,
+            coops_path=getattr(args, "coops", None),
+            sro_path=getattr(args, "sro_housing", None),
+            rezoning_path=getattr(args, "rezoning_applications", None),
+            local_area_boundary_fc=neighbourhoods_fc,
+        )
+        pts_df = overlay_result.pts_df
+        unmatched_records = overlay_result.unmatched_records
 
     fc = blocks_feature_collection(blocks_merged)
     blocks_geo = add_blocks_layer(m, fc)
@@ -200,7 +260,7 @@ def build_map(args) -> None:
     # the runtime backstop for when a checkbox toggle re-inserts buildings
     # anyway (see its docstring for why that alone isn't enough).
     _unmatched_layers, _unmatched_layer_names, unmatched_marker_metadata = (
-        add_unmatched_overlay_layers(m, overlay_result.unmatched_records)
+        add_unmatched_overlay_layers(m, unmatched_records)
     )
     _layer_vtu, _layer_non, layer_vtu_name, layer_non_name, marker_metadata = (
         add_buildings_layers(m, pts_df)
@@ -230,7 +290,7 @@ def build_map(args) -> None:
     l_tbl = landlords_table(pts_df)
     n_tbl = neighbourhoods_table(pts_df)
     buildings_rows_html = (
-        rows_buildings(b_tbl) + "\n" + rows_synthetic(overlay_result.unmatched_records)
+        rows_buildings(b_tbl) + "\n" + rows_synthetic(unmatched_records)
     )
     m.get_root().html.add_child(
         folium.Element(
@@ -259,7 +319,7 @@ def build_map(args) -> None:
             b_key = str(b_id)
         building_records_map[b_key] = cleaned
 
-    for rec in overlay_result.unmatched_records:
+    for rec in unmatched_records:
         building_records_map[str(rec["synthetic_id"])] = _sanitise_record(
             {
                 "b_id": rec["synthetic_id"],

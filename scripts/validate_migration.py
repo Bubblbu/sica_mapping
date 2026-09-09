@@ -44,13 +44,48 @@ from sica_core.ingest import run_ingest  # noqa: E402
 # intended effect of first-class landlord identity, not a bug — confirmed by
 # owner_key (the actual identity signal) matching perfectly in every one of these
 # cases; only the cosmetic display text differs.
-KNOWN_DIFF_FIELDS = {"value_land", "value_bldg", "bldg_land_ratio", "b_id", "block_id", "owner_group"}
+# is_coop/is_sro/is_rezoning + the coop_*/sro_*/rezoning_*/housing_type detail
+# columns: sica_core now matches overlays in the pipeline and exports these on
+# every building row (see sica_core/export.py::overlay_building_columns). The v1
+# reference here runs only `--stage data`, which never touched overlays —
+# match_overlays() lives in build.py's frontend stage — so the reference rows
+# simply don't carry these keys. Overlay correctness is covered by its own
+# tests + the marker-metadata parity check, not this diff.
+_OVERLAY_FIELDS = {
+    "is_coop",
+    "is_sro",
+    "is_rezoning",
+    "coop_status",
+    "coop_ownership_model",
+    "sro_owner",
+    "sro_operator",
+    "sro_operator_group",
+    "sro_ownership_group",
+    "sro_occupancy_status",
+    "sro_registered_rooms",
+    "rezoning_status",
+    "rezoning_status_group",
+    "rezoning_category",
+    "rezoning_status_detail",
+    "rezoning_link",
+    "housing_type",
+}
+KNOWN_DIFF_FIELDS = {
+    "value_land",
+    "value_bldg",
+    "bldg_land_ratio",
+    "b_id",
+    "block_id",
+    "owner_group",
+} | _OVERLAY_FIELDS
 FLOAT_TOL = 1e-6
 
 
 def _values_match(a: object, b: object) -> bool:
     if isinstance(a, (int, float)) and isinstance(b, (int, float)):
-        if (isinstance(a, float) and math.isnan(a)) or (isinstance(b, float) and math.isnan(b)):
+        if (isinstance(a, float) and math.isnan(a)) or (
+            isinstance(b, float) and math.isnan(b)
+        ):
             return (isinstance(a, float) and math.isnan(a)) and (
                 isinstance(b, float) and math.isnan(b)
             )
@@ -67,7 +102,9 @@ def diff_points(sqlite_points: list[dict], reference_points: list[dict]) -> list
     only_in_sqlite = set(sqlite_by_key) - set(reference_by_key)
     only_in_reference = set(reference_by_key) - set(sqlite_by_key)
     if only_in_sqlite:
-        problems.append(f"{len(only_in_sqlite)} addr_key(s) only in SQLite path: {sorted(only_in_sqlite)[:5]}...")
+        problems.append(
+            f"{len(only_in_sqlite)} addr_key(s) only in SQLite path: {sorted(only_in_sqlite)[:5]}..."
+        )
     if only_in_reference:
         problems.append(
             f"{len(only_in_reference)} addr_key(s) only in reference (CSV) path: "
@@ -92,7 +129,9 @@ def diff_points(sqlite_points: list[dict], reference_points: list[dict]) -> list
     return problems
 
 
-def check_west_end_currency_fix(sqlite_points: list[dict], reference_points: list[dict]) -> str:
+def check_west_end_currency_fix(
+    sqlite_points: list[dict], reference_points: list[dict]
+) -> str:
     def non_null_rate(points: list[dict]) -> tuple[int, int]:
         west_end = [p for p in points if p.get("local_area") == "West End"]
         non_null = [p for p in west_end if p.get("value_land") is not None]
@@ -128,9 +167,12 @@ def main() -> int:
         [
             sys.executable,
             str(REPO_ROOT / "build_sica_map.py"),
-            "--config", args.config,
-            "--stage", "data",
-            "--data-dir", str(reference_dir),
+            "--config",
+            args.config,
+            "--stage",
+            "data",
+            "--data-dir",
+            str(reference_dir),
         ],
         cwd=REPO_ROOT,
         check=True,
@@ -151,7 +193,9 @@ def main() -> int:
     sqlite_filter_cfg = json.loads((checkpoint_dir / "filter_config.json").read_text())
     building_metrics = sqlite_filter_cfg.get("building_metrics") or {}
     if not building_metrics:
-        problems.append("filter_config.json: building_metrics is empty — histogram port didn't run")
+        problems.append(
+            "filter_config.json: building_metrics is empty — histogram port didn't run"
+        )
     else:
         print(f"building_metrics populated: {sorted(building_metrics)}")
 
