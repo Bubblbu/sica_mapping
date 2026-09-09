@@ -3,6 +3,7 @@
 -- Derived from source CSVs; nothing here is hand-authored.
 -- ============================================================
 
+DROP TABLE IF EXISTS overlay_matches;
 DROP TABLE IF EXISTS vtu_membership;
 DROP TABLE IF EXISTS buildings;
 DROP TABLE IF EXISTS landlords;
@@ -10,12 +11,17 @@ DROP TABLE IF EXISTS blocks;
 DROP TABLE IF EXISTS raw_addresses;
 DROP TABLE IF EXISTS raw_buildings;
 DROP TABLE IF EXISTS raw_block_numbers;
+DROP TABLE IF EXISTS raw_sro;
+DROP TABLE IF EXISTS raw_coops;
+DROP TABLE IF EXISTS raw_rezoning;
+DROP TABLE IF EXISTS raw_local_areas;
 DROP VIEW IF EXISTS block_stats;
 
 CREATE TABLE raw_buildings (
     raw_building_id INTEGER PRIMARY KEY,
     local_area TEXT,
     address TEXT,
+    secondary_addresses TEXT,  -- ";"-joined other civic addresses for this building; NULL on older buildings.csv vintages
     primary_address TEXT,
     is_primary_address INTEGER,
     n_pids INTEGER,
@@ -70,6 +76,82 @@ CREATE TABLE raw_block_numbers (
     ingested_at TEXT NOT NULL
 );
 
+-- SRO/SRA, co-op, and rezoning-application sources: raw storage, verbatim
+-- from their CSVs (ingest/raw_sro.py, raw_coops.py, raw_rezoning.py). No
+-- matching against buildings happens at load time — that's the job of
+-- ingest/overlays.py (the merge step), which reads these rows and writes
+-- overlay_matches. See docs/DATA_SOURCES.md for each source's (partially
+-- unverified) origin.
+CREATE TABLE raw_sro (
+    raw_sro_id INTEGER PRIMARY KEY,
+    source_id TEXT,            -- the source's own "ID" column
+    address TEXT,
+    building_name TEXT,
+    secondary_address TEXT,
+    area TEXT,
+    latitude REAL,
+    longitude REAL,
+    owner TEXT,
+    operator TEXT,
+    operator_group TEXT,
+    ownership_group TEXT,
+    registered_rooms INTEGER,
+    occupancy_status TEXT,
+    match_method TEXT,        -- upstream address-matching flag from whoever combined the source lists; unrelated to our own matching
+    ingested_at TEXT NOT NULL
+);
+CREATE INDEX idx_raw_sro_address ON raw_sro(address);
+
+CREATE TABLE raw_coops (
+    raw_coop_id INTEGER PRIMARY KEY,
+    source_id TEXT,            -- the source's own "id" column
+    title TEXT,
+    city TEXT,
+    region TEXT,
+    neighbourhood TEXT,
+    school_district TEXT,
+    address TEXT,
+    lat REAL,
+    lon REAL,
+    status TEXT,
+    ownership_model TEXT,
+    bedrooms_min REAL,
+    bedrooms_max REAL,
+    home_types TEXT,
+    features TEXT,
+    summary TEXT,
+    featured_image TEXT,
+    website TEXT,
+    read_more_url TEXT,
+    ingested_at TEXT NOT NULL
+);
+CREATE INDEX idx_raw_coops_address ON raw_coops(address);
+
+CREATE TABLE raw_rezoning (
+    raw_rezoning_id INTEGER PRIMARY KEY,
+    source_id TEXT,            -- the source's own "ID" column (e.g. "RZ285"); NOT reliably unique per row
+    name TEXT,
+    status TEXT,
+    category TEXT,
+    status_detail TEXT,
+    latitude REAL,
+    longitude REAL,
+    link TEXT,
+    ingested_at TEXT NOT NULL
+);
+
+-- Vancouver's 22 official local-area boundary polygons (ingest/raw_local_areas.py).
+-- ingest/overlays.py point-in-polygons an unmatched overlay record's lat/lon
+-- against these to give it a local_area that lines up with the map's
+-- neighbourhood filter checkboxes.
+CREATE TABLE raw_local_areas (
+    raw_local_area_id INTEGER PRIMARY KEY,
+    name TEXT,
+    geom TEXT,              -- GeoJSON polygon, verbatim
+    geo_point_2d TEXT,      -- "lat, lon" verbatim
+    ingested_at TEXT NOT NULL
+);
+
 CREATE TABLE blocks (
     block_id INTEGER PRIMARY KEY,
     geom TEXT NOT NULL,               -- GeoJSON polygon, verbatim
@@ -110,6 +192,26 @@ CREATE TABLE buildings (
 CREATE INDEX idx_buildings_landlord ON buildings(landlord_id);
 CREATE INDEX idx_buildings_block ON buildings(block_id);
 CREATE INDEX idx_buildings_local_area ON buildings(local_area);
+
+-- Result of ingest/overlays.py: one row per raw_sro/raw_coops/raw_rezoning
+-- record, saying whether (and how) it matched a building. Fully derived —
+-- dropped and rebuilt every run, same as the raw tables it's computed from.
+--   building_id NULL          -> unmatched; becomes a standalone map marker
+--   match_method 'address'    -> the source's own address/name keyed a building
+--   match_method 'secondary_address' -> matched via raw_buildings.secondary_addresses
+--   match_method 'unmatched'  -> no key hit (building_id is NULL)
+CREATE TABLE overlay_matches (
+    overlay_match_id INTEGER PRIMARY KEY,
+    overlay_source TEXT NOT NULL CHECK (overlay_source IN ('sro','coop','rezoning')),
+    raw_row_id INTEGER NOT NULL,   -- PK in the raw_<source> table named by overlay_source
+    building_id INTEGER REFERENCES buildings(building_id),
+    match_method TEXT NOT NULL CHECK (match_method IN ('address','secondary_address','unmatched')),
+    match_key TEXT,                -- the addr_key (or rezoning name fragment key) used
+    local_area TEXT,              -- point-in-polygon result, for unmatched markers
+    created_at TEXT NOT NULL
+);
+CREATE INDEX idx_overlay_matches_source ON overlay_matches(overlay_source);
+CREATE INDEX idx_overlay_matches_building ON overlay_matches(building_id);
 
 -- Allow-listed columns only — see ingest/membership.py's ALLOWED_MEMBERSHIP_COLUMNS
 -- (a later step). No name/email/phone/ethnicity/religion/donation data ever lands

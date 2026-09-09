@@ -36,6 +36,15 @@ class IngestConfig:
     vtu_raw: str
     db_path: str = DEFAULT_DB_PATH
     bbox: tuple[float, float, float, float] = (-123.18, 49.265, -123.10, 49.295)
+    # Optional overlay sources — same config.toml keys sica_mapping already
+    # uses. Not in _REQUIRED_PATHS: a fresh setup may not have these yet, and
+    # ingest/overlays.py only runs the sources whose path is set.
+    # local_area_boundary is needed by ingest/overlays.py for the
+    # point-in-polygon local_area lookup on unmatched overlay records.
+    sro_housing: str | None = None
+    coops: str | None = None
+    rezoning_applications: str | None = None
+    local_area_boundary: str | None = None
 
 
 def _load_raw(path: str) -> dict[str, object]:
@@ -69,6 +78,9 @@ def load_ingest_config(path: str) -> IngestConfig:
     bbox_str = str(flat.get("bbox", DEFAULT_BBOX))
     bbox = tuple(float(v) for v in bbox_str.split(","))
 
+    def _opt(key: str) -> str | None:
+        return str(flat[key]) if flat.get(key) else None
+
     return IngestConfig(
         buildings=str(flat["buildings"]),
         addresses=str(flat["addresses"]),
@@ -77,4 +89,8 @@ def load_ingest_config(path: str) -> IngestConfig:
         vtu_raw=str(flat["vtu_raw"]),
         db_path=str(flat.get("sica_core_db", DEFAULT_DB_PATH)),
         bbox=bbox,
+        sro_housing=_opt("sro_housing"),
+        coops=_opt("coops"),
+        rezoning_applications=_opt("rezoning_applications"),
+        local_area_boundary=_opt("local_area_boundary"),
     )

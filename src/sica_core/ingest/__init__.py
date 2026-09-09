@@ -25,8 +25,13 @@ from .block_numbers import ingest_raw_block_numbers
 from .blocks import ingest_blocks
 from .membership import ingest_membership
 from .merge import run_merge
+from .overlays import run_overlay_match
 from .raw_addresses import ingest_raw_addresses
 from .raw_buildings import ingest_raw_buildings
+from .raw_coops import ingest_raw_coops
+from .raw_local_areas import ingest_raw_local_areas
+from .raw_rezoning import ingest_raw_rezoning
+from .raw_sro import ingest_raw_sro
 
 logger = logging.getLogger("sica_core.ingest")
 
@@ -41,17 +46,44 @@ def run_ingest(conn: sqlite3.Connection, config: IngestConfig) -> dict[str, int]
     logger.info("blocks: %d rows", counts["blocks"])
     counts["raw_block_numbers"] = ingest_raw_block_numbers(conn, config.block_numbers)
     logger.info("raw_block_numbers: %d rows", counts["raw_block_numbers"])
+
+    # Optional overlay sources — raw storage only here; matching against
+    # buildings happens in run_overlay_match() below, after run_merge().
+    if config.sro_housing:
+        counts["raw_sro"] = ingest_raw_sro(conn, config.sro_housing)
+        logger.info("raw_sro: %d rows", counts["raw_sro"])
+    if config.coops:
+        counts["raw_coops"] = ingest_raw_coops(conn, config.coops)
+        logger.info("raw_coops: %d rows", counts["raw_coops"])
+    if config.rezoning_applications:
+        counts["raw_rezoning"] = ingest_raw_rezoning(conn, config.rezoning_applications)
+        logger.info("raw_rezoning: %d rows", counts["raw_rezoning"])
+    if config.local_area_boundary:
+        counts["raw_local_areas"] = ingest_raw_local_areas(
+            conn, config.local_area_boundary
+        )
+        logger.info("raw_local_areas: %d rows", counts["raw_local_areas"])
+
     counts["buildings"] = run_merge(conn)
     logger.info("buildings: %d rows", counts["buildings"])
     counts["vtu_membership"] = ingest_membership(conn, config.vtu_raw)
     logger.info("vtu_membership: %d rows", counts["vtu_membership"])
+
+    # Match overlay records against buildings (needs buildings.addr_key /
+    # building_id). No-op for any source not configured / not ingested above.
+    counts["overlay_matches"] = run_overlay_match(conn)
+    logger.info("overlay_matches: %d rows", counts["overlay_matches"])
     return counts
 
 
 def main() -> None:
     logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s")
-    parser = argparse.ArgumentParser(description="Ingest CSVs into sica_core's SQLite store")
-    parser.add_argument("--config", required=True, help="TOML/JSON config with source paths")
+    parser = argparse.ArgumentParser(
+        description="Ingest CSVs into sica_core's SQLite store"
+    )
+    parser.add_argument(
+        "--config", required=True, help="TOML/JSON config with source paths"
+    )
     args = parser.parse_args()
 
     config = load_ingest_config(args.config)

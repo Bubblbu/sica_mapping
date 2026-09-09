@@ -39,6 +39,7 @@ IGNORED_COLUMNS = {
 RAW_BUILDINGS_COLUMNS = [
     "local_area",
     "address",
+    "secondary_addresses",  # ";"-joined other civic addresses VanMaps resolves to this building; absent on older vintages
     "primary_address",
     "is_primary_address",
     "n_pids",
