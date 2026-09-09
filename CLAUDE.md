@@ -2,7 +2,7 @@
 
 *Living document. Update this as decisions change — it's meant to be edited, not archived.*
 
-Last updated: 2026-07-28
+Last updated: 2026-09-09
 
 ---
 
@@ -67,6 +67,25 @@ Full data lineage tracking (tracing every derived value back to its exact source
 
 ### Data transparency (Q8b)
 Raw source tables (Open Data extract, FOI list, NationBuilder export, ownership_claims) are kept as **separate browsable SQLite tables**, not collapsed into one merged dataframe early in the pipeline. No lineage tracing between them yet (see above) — just visibility into inputs alongside the merged/final view.
+
+### Overlay sources (SRO/SRA, co-op, rezoning)
+
+These three third-party datasets are ingested into `sica_core` as raw,
+browsable tables (`raw_sro`, `raw_coops`, `raw_rezoning`) plus
+`raw_local_areas` (the 22 official boundary polygons), then **matched in the
+pipeline**, not at render time: `ingest/overlays.py::run_overlay_match` keys
+each record against `buildings` (co-op/SRO by civic address with a
+`secondary_addresses` fallback; rezoning by a parsed `name` fragment, no
+fallback) and writes one row per record to `overlay_matches`
+(`building_id` NULL = unmatched → standalone map marker). Match coverage per
+source is logged and exported (`overlay_coverage.json`); a
+fixture + real-data test guards against a keying regression silently
+dropping recall.
+
+`export.py` attaches the `is_coop`/`is_sro`/`is_rezoning` + detail columns
+to every building row and writes `overlay_unmatched.json`. The old
+render-time `src/sica_mapping/data/overlays.py::match_overlays` stays only
+as the fallback for the pure-CSV `build_sica_map.py` path.
 
 ### Sensitivity model (Q11)
 **Field-level flags, tagged incrementally, default-public.** Not every field classified up front (too much upfront work for the time budget) — instead, known-sensitive fields are flagged now (VTU membership counts/IDs, tenant names/identifying details in claim notes), everything else defaults to public, and new fields get flagged *at the moment they're added* if they touch tenant identity or membership. This is a discipline to maintain, not just a one-time setup.
