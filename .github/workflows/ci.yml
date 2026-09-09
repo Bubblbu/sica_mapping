@@ -1,0 +1,47 @@
+# .github/workflows/ci.yml
+# The promotion gate: nothing reaches `main` (and therefore nothing can be
+# promoted to `production`) without the tests and a real build passing.
+#
+# Lint runs but is advisory for now — the existing tree has a backlog of
+# ruff findings (`ruff check .` / `ruff format --check .` both fail today).
+# Flip `continue-on-error` off once that's cleaned up in its own pass.
+name: CI
+
+on:
+  pull_request:
+    branches: [main, production]
+  push:
+    branches: [main]
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          python-version: "3.12"
+
+      - name: Sync dependencies (incl. dev)
+        run: uv sync --group dev
+
+      - name: Ruff lint (advisory)
+        continue-on-error: true
+        run: uv run ruff check .
+
+      - name: Ruff format check (advisory)
+        continue-on-error: true
+        run: uv run ruff format --check .
+
+      - name: Tests
+        run: uv run pytest -q
+
+      # Build the public map the same way deploy.yml does (pure-CSV path:
+      # committed data/*.csv only, no gitignored raw membership export).
+      # Catches a broken pipeline before it can be merged.
+      - name: Build smoke test
+        run: |
+          uv run python build_sica_map.py --config config.toml
+          test -f www/index.html
