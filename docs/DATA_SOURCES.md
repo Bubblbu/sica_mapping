@@ -60,7 +60,8 @@ format, cadence, quirks). It stops there.
 | [`sra_housing_combined.csv`](#sra_housing_combinedcsv) | FOI? — unverified ⚠️ | 2026-07-30 (file date) | TODO | `sica_mapping` |
 | [`rezoning_applications.csv`](#rezoning_applicationscsv) | FOI? — unverified ⚠️ | 2026-07-30 (file date) | TODO | `sica_mapping` |
 | [`coops_vancouver.csv`](#coops_vancouvercsv) | Third-party online | 2026-08-04 | Periodic (re-run script) | `sica_mapping` |
-| [`membership_full.csv`](#membership_fullcsv) | Internal / organizational | TODO | VTU's own cadence | `sica_mapping`, `sica_core` |
+| [`membership_full.csv`](#membership_fullcsv) | Internal / organizational | TODO | VTU's own cadence | `sica_core` |
+| [`vtu_membership_public.csv`](#vtu_membership_publiccsv) | Derived (generated locally, committed) | TODO | Regenerate after each `membership_full.csv` refresh | `sica_mapping` |
 | [`vtu_members.csv`](#vtu_memberscsv) | Internal / organizational — likely orphaned ⚠️ | — | — | none found |
 
 ⚠️ = flagged for your attention, see that source's entry.
@@ -349,11 +350,38 @@ rather than this doc for how field-level access is handled.
   broader field-level flagging approach this feeds into.
 - **Access method:** manual export from NationBuilder by VTU; not
   scriptable from this project's side.
-- **Output location:** `data/membership_full.csv`.
-- **Consumed by:** `sica_mapping` (`data/vtu.py`), `sica_core`
-  (`ingest/membership.py`).
+- **Output location:** `data/Nationbuilder/membership_full.csv` — that whole
+  directory is gitignored (`data/Nationbuilder/*`) and never committed; this
+  file only ever exists on someone's local machine.
+- **Consumed by:** `sica_core` (`ingest/membership.py`) directly, via
+  config.toml's `vtu_raw` path. `sica_mapping` no longer reads this file at
+  all — it reads the derived `vtu_membership_public.csv` below instead. That
+  split (2026-09-09) is what fixes the leak this section used to warn about:
+  the raw export used to be committed and consumed directly by the public
+  map build.
 - **Refresh cadence:** VTU's own cadence — TODO: confirm how often VTU
-  re-exports and whether there's a standing arrangement for this.
+  re-exports and whether there's a standing arrangement for this. Whenever
+  it's refreshed, re-run `scripts/build_vtu_public_extract.py` to regenerate
+  `vtu_membership_public.csv` from it.
+
+### `vtu_membership_public.csv`
+
+- **What it is:** the public, address-level aggregate derived from
+  `membership_full.csv` — one row per address with `addr_key`,
+  `member_count_active`, `member_count_all`, and `latest_membership_year`
+  only. No per-member rows, tags, or timestamps.
+- **Origin:** generated locally by `scripts/build_vtu_public_extract.py`
+  (reads config's `vtu_raw` path, writes config's `vtu` path) — not fetched
+  from anywhere; regenerate it after every `membership_full.csv` refresh.
+- **License/attribution:** N/A (derived internal data), but safe to commit
+  and safe to feed the public build — the resolution matches exactly what a
+  building's public marker already shows (a count), never more.
+- **Access method:** `uv run python scripts/build_vtu_public_extract.py`.
+- **Output location:** `data/vtu_membership_public.csv` (committed).
+- **Consumed by:** `sica_mapping` (`data/pipeline.py`), via config.toml's
+  `vtu` path.
+- **Refresh cadence:** tied to `membership_full.csv`'s refresh cadence, not
+  independent.
 
 ### `vtu_members.csv`
 
@@ -361,11 +389,13 @@ rather than this doc for how field-level access is handled.
   (`nationbuilder_id`, `primary_address1`, `address`) — looks like an older,
   already-narrowed export that predates `membership_full.csv`. No code in
   either `sica_mapping` or `sica_core` references this file by name
-  (confirmed via repo-wide search); `config.toml`'s `vtu` path points at
-  `membership_full.csv` only.
+  (confirmed via repo-wide search); neither `config.toml` path (`vtu` or
+  `vtu_raw`) points at it.
+- **Output location:** `data/Nationbuilder/vtu_members.csv` — gitignored
+  alongside `membership_full.csv`.
 - **Recommendation:** confirm it's genuinely unused, then either delete it
-  or move it under `data/sources/` as a dated historical snapshot rather
-  than leaving it sitting in `data/` looking like a live input.
+  or keep it as a dated historical snapshot rather than leaving it sitting
+  next to the live input looking like one.
 
 ---
 

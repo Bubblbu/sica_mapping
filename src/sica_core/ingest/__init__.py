@@ -43,7 +43,7 @@ def run_ingest(conn: sqlite3.Connection, config: IngestConfig) -> dict[str, int]
     logger.info("raw_block_numbers: %d rows", counts["raw_block_numbers"])
     counts["buildings"] = run_merge(conn)
     logger.info("buildings: %d rows", counts["buildings"])
-    counts["vtu_membership"] = ingest_membership(conn, config.vtu)
+    counts["vtu_membership"] = ingest_membership(conn, config.vtu_raw)
     logger.info("vtu_membership: %d rows", counts["vtu_membership"])
     return counts
 

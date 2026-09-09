@@ -19,7 +19,12 @@ except ModuleNotFoundError:  # pragma: no cover - only for <3.11
 
 DEFAULT_DB_PATH = "data/sica_core.db"
 DEFAULT_BBOX = "-123.18,49.265,-123.10,49.295"
-_REQUIRED_PATHS = ("buildings", "addresses", "blocks", "block_numbers", "vtu")
+# "vtu_raw", not "vtu" — config.toml's "vtu" key is sica_mapping's public,
+# address-aggregated extract (data/vtu_membership_public.csv). sica_core's
+# ingest needs the raw, un-anonymized NationBuilder export instead (allow-
+# listed down to a few columns by ingest/membership.py); giving it its own
+# key avoids the two builds silently fighting over one config value.
+_REQUIRED_PATHS = ("buildings", "addresses", "blocks", "block_numbers", "vtu_raw")
 
 
 @dataclass
@@ -28,7 +33,7 @@ class IngestConfig:
     addresses: str
     blocks: str
     block_numbers: str
-    vtu: str
+    vtu_raw: str
     db_path: str = DEFAULT_DB_PATH
     bbox: tuple[float, float, float, float] = (-123.18, 49.265, -123.10, 49.295)
 
@@ -69,7 +74,7 @@ def load_ingest_config(path: str) -> IngestConfig:
         addresses=str(flat["addresses"]),
         blocks=str(flat["blocks"]),
         block_numbers=str(flat["block_numbers"]),
-        vtu=str(flat["vtu"]),
+        vtu_raw=str(flat["vtu_raw"]),
         db_path=str(flat.get("sica_core_db", DEFAULT_DB_PATH)),
         bbox=bbox,
     )

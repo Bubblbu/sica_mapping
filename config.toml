@@ -6,6 +6,9 @@ blocks = "data/block-outlines.csv"
 block_numbers = "data/block-numbers.csv"
 local_area_boundary = "data/local-area-boundary.csv"
 vtu = "data/vtu_membership_public.csv"
+# Raw NationBuilder export, gitignored (see data/Nationbuilder/) — used only by
+# sica_core's internal-tool ingest, never by the public sica_mapping build above.
+vtu_raw = "data/Nationbuilder/membership_full.csv"
 sica_core_db = "data/sica_core.db"
 sro_housing = "data/sra_housing_combined.csv"
 rezoning_applications = "data/rezoning_applications.csv"
