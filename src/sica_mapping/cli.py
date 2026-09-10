@@ -10,7 +10,9 @@ except ModuleNotFoundError:  # pragma: no cover - only for <3.11
 
 DEFAULT_BBOX = "-123.18,49.265,-123.10,49.295"
 DEFAULT_OUT = "html/index.html"
-DEFAULT_TILES = "cartodbpositron"
+# Keyless. CARTO's `cartodbpositron` now needs an API key; see
+# build.py::_BASEMAPS for the named presets and how a raw URL + attr works.
+DEFAULT_TILES = "esri-gray"
 DEFAULT_SIDEBAR_WIDTH = 540
 DEFAULT_STAGE = "frontend"
 DEFAULT_DATA_DIR = ".preprocessed"
@@ -59,6 +61,7 @@ def _merge_config(args: argparse.Namespace, config: dict[str, object]) -> None:
         "out": DEFAULT_OUT,
         "bbox": DEFAULT_BBOX,
         "tiles": DEFAULT_TILES,
+        "attr": None,
         "sidebar_width": DEFAULT_SIDEBAR_WIDTH,
         "stage": DEFAULT_STAGE,
         "data_dir": DEFAULT_DATA_DIR,
@@ -142,7 +145,18 @@ def parse_args() -> argparse.Namespace:
     ap.add_argument(
         "--bbox", help=f"lon_min,lat_min,lon_max,lat_max (default: {DEFAULT_BBOX})"
     )
-    ap.add_argument("--tiles", help=f"Folium tile set (default: {DEFAULT_TILES})")
+    ap.add_argument(
+        "--tiles",
+        help=(
+            f"Basemap: a preset (esri-gray, esri-gray-plain), a folium built-in "
+            f"(OpenStreetMap), or a raw XYZ tile URL (needs --attr). Default: {DEFAULT_TILES}"
+        ),
+    )
+    ap.add_argument(
+        "--attr",
+        default=None,
+        help="Attribution HTML for a raw --tiles URL (ignored for presets/built-ins)",
+    )
     ap.add_argument(
         "--sidebar-width", type=int, help="Sidebar width in px (default: 540)"
     )

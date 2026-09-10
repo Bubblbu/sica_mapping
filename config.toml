@@ -17,6 +17,6 @@ coops = "data/coops_vancouver.csv"
 [options]
 out = "index.html"
 bbox = "-123.18,49.265,-123.10,49.295"
-tiles = "cartodbpositron"
+tiles = "esri-gray"
 sidebar_width = 540
 verbose = true
