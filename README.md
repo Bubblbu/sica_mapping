@@ -184,17 +184,50 @@ Netlify, or any other CDN without server-side code.
   preview changes.
 - When tweaking JS templates, remember to clear your browser cache or open the map in an
   incognito window so that updated assets load immediately.
+- `uv run pytest` runs the test suite (dev deps: `uv sync --group dev`).
 
-## Deployment
+## Branching & Deployment
 
-1. Run `python build_sica_map.py --config config.toml --stage all`.
-2. Commit or copy the four `www/index*` artifacts to your publishing repo.
-3. If you need multiple filtered variants (e.g., per neighbourhood), re-run with
-   different `--local-area` filters and output names to generate multiple HTML bundles.
+Two long-lived branches (GitHub Flow + a release branch):
 
-Consider using GitHub Actions or another CI runner to trigger the build script whenever
-new CSVs land in cloud storage, then push the resulting `www/` directory to the hosting
-bucket.
+| Branch | Role |
+| --- | --- |
+| `main` | Integration. Always green, always deployable. **Not** auto-deployed. All feature PRs target it. |
+| `production` | What is live. `.github/workflows/deploy.yml` builds and publishes to GitHub Pages on every push here. |
+
+### Everyday work
+
+1. Branch off `main`, open a PR back into `main`.
+2. `.github/workflows/ci.yml` runs on the PR: tests + a build smoke test
+   (`build_sica_map.py --config config.toml` must produce `www/index.html`).
+   Lint (`ruff`) runs but is advisory until the existing findings are cleaned up.
+3. Merge once CI is green.
+
+### Releasing (promoting to the live site)
+
+1. Open a PR **from `main` into `production`**. The diff is your release notes.
+2. Merge it. `deploy.yml` fires on the push to `production` and updates GitHub Pages.
+3. Tag the merge commit (`git tag -a v0.x.0 -m "…" && git push --tags`).
+
+`workflow_dispatch` is kept on `deploy.yml` for a manual re-deploy of whatever
+is currently on `production`.
+
+### One-time GitHub setup (repo admin, in Settings → Branches)
+
+- Protect `main`: require a PR, require the `CI` check to pass, disallow direct pushes.
+- Protect `production`: require a PR (restrict its source to `main`), require `CI`,
+  require linear history, disallow direct pushes, restrict who can merge.
+
+### Notes
+
+- The deploy build uses the **pure-CSV path** (`build_sica_map.py`), which reads only
+  committed `data/*.csv` (`vtu_membership_public.csv`, not the gitignored raw
+  NationBuilder export). Overlay matching there falls back to
+  `sica_mapping/data/overlays.py::match_overlays`; the `sica_core` `overlay_matches`
+  pipeline (run locally via `scripts/rebuild_map.py`) produces byte-identical marker
+  output and is the source of truth for local/internal builds.
+- Multiple filtered variants (e.g. per neighbourhood) are still possible by re-running
+  with different `--local-area` filters and output names.
 
 ## To-dos
 
