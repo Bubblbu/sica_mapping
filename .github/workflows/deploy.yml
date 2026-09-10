@@ -1,9 +1,12 @@
 # .github/workflows/deploy.yml
 name: Deploy map to GitHub Pages
 
+# `production` is the release branch: whatever is on it is what's live.
+# Promote by opening a PR from `main` -> `production` and merging it.
+# `main` is the always-green integration branch and is NOT auto-deployed.
 on:
   push:
-    branches: [main]        # adjust if your default branch differs
+    branches: [production]
   workflow_dispatch:
 
 permissions:
