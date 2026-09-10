@@ -35,6 +35,4 @@ www/
 data/sica_core.db
 
 # Raw, un-anonymized personal data — must never be committed
-# (purged from git history 2026-09-09; kept locally, untracked, for the pipeline)
-data/membership_full.csv
-data/vtu_members.csv
+data/Nationbuilder/*

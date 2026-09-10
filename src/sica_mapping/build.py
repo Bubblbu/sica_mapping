@@ -41,6 +41,58 @@ from .frontend import (
 )
 
 
+# Named keyless basemaps. CARTO retired unauthenticated access to its
+# positron/voyager raster tiles, so `cartodbpositron` now renders an
+# "add an API key" placeholder. `esri-gray` is the closest drop-in that
+# needs no key — Esri's Light Gray Canvas (attribution only), with the
+# matching reference layer for street/place labels so it reads like
+# positron rather than a blank grey sheet.
+_ESRI_CANVAS = "https://server.arcgisonline.com/ArcGIS/rest/services/Canvas"
+_ESRI_GRAY_ATTR = (
+    "Tiles © Esri — Esri, HERE, Garmin, © OpenStreetMap contributors"
+)
+_BASEMAPS: dict[str, dict[str, str]] = {
+    "esri-gray": {
+        "tiles": f"{_ESRI_CANVAS}/World_Light_Gray_Base/MapServer/tile/{{z}}/{{y}}/{{x}}",
+        "attr": _ESRI_GRAY_ATTR,
+        "labels": f"{_ESRI_CANVAS}/World_Light_Gray_Reference/MapServer/tile/{{z}}/{{y}}/{{x}}",
+    },
+    "esri-gray-plain": {  # same, without the street/place label layer
+        "tiles": f"{_ESRI_CANVAS}/World_Light_Gray_Base/MapServer/tile/{{z}}/{{y}}/{{x}}",
+        "attr": _ESRI_GRAY_ATTR,
+    },
+}
+
+
+def _resolve_basemap(
+    name: str | None, attr_override: str | None
+) -> dict[str, str | None]:
+    """Turn a `--tiles` value into folium.Map kwargs.
+
+    - a key in _BASEMAPS  -> that preset (attr_override wins if given)
+    - a raw tile URL      -> passed through; an attribution is required
+    - anything else        -> a folium built-in name ("OpenStreetMap", ...),
+                              folium supplies the attribution itself
+    """
+    preset = _BASEMAPS.get(name or "")
+    if preset:
+        attr = attr_override or preset["attr"]
+        return {
+            "tiles": preset["tiles"],
+            "attr": attr,
+            "labels": preset.get("labels"),
+            "labels_attr": attr,
+        }
+    if name and name.startswith(("http://", "https://")):
+        if not attr_override:
+            raise ValueError(
+                "a raw tile URL in --tiles / [options].tiles needs an attribution "
+                "(--attr or [options].attr)"
+            )
+        return {"tiles": name, "attr": attr_override, "labels": None, "labels_attr": None}
+    return {"tiles": name, "attr": attr_override, "labels": None, "labels_attr": None}
+
+
 def _ensure_output_path(path: Path) -> Path:
     original = Path(path)
     if original.is_absolute():
@@ -169,12 +221,24 @@ def build_map(args) -> None:
     elif extent > 0.03:
         zoom_start = 13
 
+    basemap = _resolve_basemap(args.tiles, getattr(args, "attr", None))
     m = folium.Map(
         location=[center_lat, center_lon],
         zoom_start=zoom_start,
-        tiles=args.tiles,
+        tiles=basemap["tiles"],
+        attr=basemap["attr"],
         prefer_canvas=True,
     )
+    # Street/place labels for the grey basemaps — added before the data
+    # layers so markers and choropleths sit on top of it, like positron.
+    if basemap["labels"]:
+        folium.TileLayer(
+            basemap["labels"],
+            attr=basemap["labels_attr"],
+            name="labels",
+            overlay=True,
+            control=False,
+        ).add_to(m)
     # local_area_boundary_fc loads before match_overlays() — needed for its
     # point-in-polygon local-area lookup for unmatched overlay records — and
     # match_overlays() enriches pts_df before anything downstream (marker
